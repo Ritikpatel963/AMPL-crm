@@ -1,0 +1,110 @@
+Could not open input file: /home/agromarket-amplchat/htdocs/amplchat.agromarket.co.in/artisan
+Could not open input file: /home/agromarket-amplchat/htdocs/amplchat.agromarket.co.in/artisan
+Could not open input file: /home/agromarket-amplchat/htdocs/amplchat.agromarket.co.in/artisan
+Could not open input file: /home/agromarket-amplchat/htdocs/amplchat.agromarket.co.in/artisan
+
+   INFO  Starting server on 127.0.0.1:8081.  
+
+   INFO  Gracefully terminating connections.  
+
+
+   INFO  Starting server on 127.0.0.1:8081.  
+
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[HY000] [2002] No such file or directory (Connection: mysql, SQL: select * from `cache` where `key` = laravel:reverb:restart limit 1)
+
+  at vendor/laravel/framework/src/Illuminate/Database/Connection.php:813
+    809▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    810▕                 );
+    811▕             }
+    812▕ 
+  ➜ 813▕             throw new QueryException(
+    814▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    815▕             );
+    816▕         }
+    817▕     }
+
+      [2m+40 vendor frames [22m
+
+  41  artisan:13
+      Illuminate\Foundation\Application::handleCommand()
+
+
+   INFO  Gracefully terminating connections.  
+
+
+   INFO  Starting server on 127.0.0.1:8081.  
+
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[HY000] [2002] No such file or directory (Connection: mysql, SQL: select * from `cache` where `key` = laravel:reverb:restart limit 1)
+
+  at vendor/laravel/framework/src/Illuminate/Database/Connection.php:813
+    809▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    810▕                 );
+    811▕             }
+    812▕ 
+  ➜ 813▕             throw new QueryException(
+    814▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    815▕             );
+    816▕         }
+    817▕     }
+
+      [2m+40 vendor frames [22m
+
+  41  artisan:13
+      Illuminate\Foundation\Application::handleCommand()
+
+
+   INFO  Gracefully terminating connections.  
+
+
+   INFO  Starting server on 127.0.0.1:8081.  
+
+   INFO  Gracefully terminating connections.  
+
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[HY000] [2002] No such file or directory (Connection: mysql, SQL: select * from `cache` where `key` = laravel:reverb:restart limit 1)
+
+  at vendor/laravel/framework/src/Illuminate/Database/Connection.php:813
+    809▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    810▕                 );
+    811▕             }
+    812▕ 
+  ➜ 813▕             throw new QueryException(
+    814▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    815▕             );
+    816▕         }
+    817▕     }
+
+      [2m+40 vendor frames [22m
+
+  41  artisan:13
+      Illuminate\Foundation\Application::handleCommand()
+
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[HY000] [2002] No such file or directory (Connection: mysql, SQL: select * from `cache` where `key` = laravel:reverb:restart limit 1)
+
+  at vendor/laravel/framework/src/Illuminate/Database/Connection.php:813
+    809▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    810▕                 );
+    811▕             }
+    812▕ 
+  ➜ 813▕             throw new QueryException(
+    814▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    815▕             );
+    816▕         }
+    817▕     }
+
+      [2m+40 vendor frames [22m
+
+  41  artisan:13
+      Illuminate\Foundation\Application::handleCommand()
+
