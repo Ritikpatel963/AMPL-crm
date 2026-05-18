@@ -24,6 +24,8 @@ Route::prefix('callingcrm')
         Route::post('/pipeline', [PipelineController::class, 'store'])->name('pipeline.store');
         Route::get('/pipeline/{campaign}', [PipelineController::class, 'show'])->name('pipeline.show');
         Route::post('/campaigns', [CampaignController::class, 'store'])->name('campaigns.store');
+        Route::post('/campaigns/{campaign}/rules', [CampaignController::class, 'storeRule'])->name('campaigns.rules.store');
+        Route::delete('/campaigns/{campaign}/rules/{rule}', [CampaignController::class, 'destroyRule'])->name('campaigns.rules.destroy');
 
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');

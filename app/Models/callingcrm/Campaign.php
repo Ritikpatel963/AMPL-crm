@@ -66,4 +66,9 @@ class Campaign extends Model
     {
         return $this->hasManyThrough(CallLog::class, Lead::class);
     }
+
+    public function assignmentRules()
+    {
+        return $this->hasMany(AssignmentRule::class);
+    }
 }

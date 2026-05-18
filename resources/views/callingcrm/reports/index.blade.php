@@ -20,11 +20,20 @@
             <div class="card crm-soft-card p-4 h-100">
                 <h3 class="crm-panel-title">Views</h3>
                 <form method="GET" action="{{ route('callingcrm.reports.index') }}" class="row g-3">
-                    <div class="col-12">
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold">Report</label>
                         <select name="report" class="form-select">
                             @foreach ($reports as $report)
                                 <option value="{{ $report }}" @selected($selectedReport === $report)>{{ $report }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Filter by Agent</label>
+                        <select name="user_id" class="form-select">
+                            <option value="">All Agents</option>
+                            @foreach ($agents as $agent)
+                                <option value="{{ $agent->id }}" @selected((string) $userId === (string) $agent->id)>{{ $agent->name }}</option>
                             @endforeach
                         </select>
                     </div>

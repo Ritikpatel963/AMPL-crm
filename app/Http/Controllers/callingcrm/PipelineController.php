@@ -21,7 +21,7 @@ class PipelineController extends Controller
             ->orderBy('name')
             ->get();
 
-        $users = User::whereIn('role', ['subadmin', 'agent'])->orderBy('name')->get(['id', 'name', 'role']);
+        $users = User::whereIn('role', ['subadmin', 'agent', 'manager'])->orderBy('name')->get(['id', 'name', 'role']);
 
         return view('callingcrm.pipeline.index', compact('pipelines', 'users'));
     }

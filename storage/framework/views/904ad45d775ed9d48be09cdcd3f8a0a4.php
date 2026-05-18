@@ -1,18 +1,14 @@
-@extends('admin_panel.layout.app')
-@section('title', 'Create Users')
 
-@section('main-content')
+<?php $__env->startSection('title', 'Create Users'); ?>
+
+<?php $__env->startSection('main-content'); ?>
 <!-- ✅ DataTables CSS -->
-{{-- <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
-<!-- ✅ jQuery + DataTables JS -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script> --}}
-{{-- //update model code --}}
+
 <div class="modal fade" id="editUserModal">
   <div class="modal-dialog">
-    <form id="editUserForm" method="POST" action="{{ route('admin_panel.admin.users.update') }}">
-    @csrf
+    <form id="editUserForm" method="POST" action="<?php echo e(route('admin_panel.admin.users.update')); ?>">
+    <?php echo csrf_field(); ?>
       <input type="hidden" name="id" id="edit_user_id">
 
       <div class="modal-content">
@@ -73,24 +69,25 @@
             </tr>
         </thead>
        <tbody>
-@foreach ($users as $user)
+<?php $__currentLoopData = $users; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $user): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 <tr>
-    <td>{{ $user->id }}</td>
-    <td>{{ $user->name }}</td>
-    <td>{{ $user->email }}</td>
-    <td>{{ ucfirst($user->role) }}</td>
+    <td><?php echo e($user->id); ?></td>
+    <td><?php echo e($user->name); ?></td>
+    <td><?php echo e($user->email); ?></td>
+    <td><?php echo e(ucfirst($user->role)); ?></td>
     <td>
-        <span class="badge {{ $user->status ? 'bg-success' : 'bg-danger' }}">
-            {{ $user->status ? 'Active' : 'Inactive' }}
+        <span class="badge <?php echo e($user->status ? 'bg-success' : 'bg-danger'); ?>">
+            <?php echo e($user->status ? 'Active' : 'Inactive'); ?>
+
         </span>
     </td>
     <td>
       <button class="btn btn-sm btn-warning"
-    data-id="{{ $user->id }}"
-    data-name="{{ $user->name }}"
-    data-email="{{ $user->email }}"
-    data-username="{{ $user->username }}"
-    data-role="{{ $user->role }}"
+    data-id="<?php echo e($user->id); ?>"
+    data-name="<?php echo e($user->name); ?>"
+    data-email="<?php echo e($user->email); ?>"
+    data-username="<?php echo e($user->username); ?>"
+    data-role="<?php echo e($user->role); ?>"
     data-password=""
     data-bs-toggle="modal"
     data-bs-target="#editUserModal"
@@ -98,16 +95,16 @@
     Edit
 </button>
 
-        <form action="{{ route('admin_panel.admin.users.destroy') }}" method="POST" class="d-inline">
-    @csrf
-    <input type="hidden" name="id" value="{{ $user->id }}">
+        <form action="<?php echo e(route('admin_panel.admin.users.destroy')); ?>" method="POST" class="d-inline">
+    <?php echo csrf_field(); ?>
+    <input type="hidden" name="id" value="<?php echo e($user->id); ?>">
     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this user?')">
         Delete
     </button>
 </form>
     </td>
 </tr>
-@endforeach
+<?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 </tbody>
 
     </table>
@@ -122,8 +119,8 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-           <form action="{{ route('admin_panel.admin.users.store') }}" method="POST">
-    @csrf
+           <form action="<?php echo e(route('admin_panel.admin.users.store')); ?>" method="POST">
+    <?php echo csrf_field(); ?>
 
 
     <input type="text" name="name" class="form-control mb-3" placeholder="Full Name" required>
@@ -183,4 +180,5 @@ function editUser(button) {
 </script>
 
 
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('admin_panel.layout.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH E:\allproject\ampl_crm_project\AMPL-crm\resources\views/admin_panel/users/index.blade.php ENDPATH**/ ?>

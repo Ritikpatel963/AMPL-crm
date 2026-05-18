@@ -27,16 +27,38 @@ class TrendController extends Controller
             'call_duration' => (clone $callQuery)->sum('duration'),
         ];
 
-        $periodFilters = ['Last 30 Days', 'Last 7 Days', 'Custom Range'];
+        $periodFilters = [
+            'today' => 'Today',
+            'yesterday' => 'Yesterday',
+            '7_days' => 'Last 7 Days',
+            '30_days' => 'Last 30 Days',
+            'this_month' => 'This Month',
+            'last_month' => 'Last Month',
+            'all_time' => 'All Time',
+            'custom' => 'Custom Range'
+        ];
+
         $callVsConnected = $this->buildWeeklyCallSeries($from, $to);
-        $userTrend = User::whereIn('role', ['agent', 'subadmin'])
+        $userTrend = User::whereIn('role', ['agent', 'subadmin', 'manager'])
             ->orderBy('name')
             ->get()
-            ->map(function ($user) use ($from, $to) {
+            ->map(function ($user) use ($from, $to, $activeFilter) {
+                $query = CallLog::where('user_id', $user->id);
+                if ($activeFilter !== 'all_time') {
+                    $query->whereBetween('called_at', [$from, $to]);
+                }
+
+                $calls = (clone $query)->count();
+                $connected = (clone $query)->where('status', 'connected')->count();
+                $totalDuration = (clone $query)->sum('duration'); // Assuming duration is in seconds
+                $averageDuration = $connected > 0 ? round($totalDuration / $connected) : 0;
+
                 return [
                     'name' => $user->name,
-                    'calls' => CallLog::where('user_id', $user->id)->whereBetween('called_at', [$from, $to])->count(),
-                    'connected' => CallLog::where('user_id', $user->id)->where('status', 'connected')->whereBetween('called_at', [$from, $to])->count(),
+                    'calls' => $calls,
+                    'connected' => $connected,
+                    'total_duration' => $totalDuration,
+                    'average_duration' => $averageDuration,
                 ];
             });
 
@@ -47,19 +69,33 @@ class TrendController extends Controller
     {
         $filter = $request->get('range', '30_days');
 
-        if ($filter === '7_days') {
-            return [now()->subDays(6)->startOfDay(), now()->endOfDay(), $filter];
+        switch ($filter) {
+            case 'today':
+                return [now()->startOfDay(), now()->endOfDay(), $filter];
+            case 'yesterday':
+                return [now()->subDay()->startOfDay(), now()->subDay()->endOfDay(), $filter];
+            case '7_days':
+                return [now()->subDays(6)->startOfDay(), now()->endOfDay(), $filter];
+            case 'this_month':
+                return [now()->startOfMonth(), now()->endOfMonth(), $filter];
+            case 'last_month':
+                return [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth(), $filter];
+            case 'all_time':
+                // Return a very early date
+                return [Carbon::create(2000, 1, 1), now()->endOfDay(), $filter];
+            case 'custom':
+                if ($request->filled('from') && $request->filled('to')) {
+                    return [
+                        Carbon::parse($request->string('from'))->startOfDay(),
+                        Carbon::parse($request->string('to'))->endOfDay(),
+                        $filter,
+                    ];
+                }
+                // Fallthrough if custom missing dates
+            case '30_days':
+            default:
+                return [now()->subDays(29)->startOfDay(), now()->endOfDay(), '30_days'];
         }
-
-        if ($filter === 'custom' && $request->filled('from') && $request->filled('to')) {
-            return [
-                Carbon::parse($request->string('from'))->startOfDay(),
-                Carbon::parse($request->string('to'))->endOfDay(),
-                $filter,
-            ];
-        }
-
-        return [now()->subDays(29)->startOfDay(), now()->endOfDay(), '30_days'];
     }
 
     protected function buildWeeklyCallSeries(Carbon $from, Carbon $to): array

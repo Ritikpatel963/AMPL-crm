@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Services\callingcrm\LeadAssignmentService;
 
 class ContactController extends Controller
 {
@@ -81,9 +82,20 @@ class ContactController extends Controller
             $campaign = Campaign::with('pipeline.stages')->findOrFail($validated['campaign_id']);
             $defaultStageId = optional($campaign->pipeline?->stages->sortBy('sort_order')->first())->id;
 
+            // Neo Dove style Lead Assignment Service
+            $assignmentService = app(LeadAssignmentService::class);
+            $propertyValues = [];
+            foreach ($properties as $property) {
+                if (!empty($validated['property_' . $property->id])) {
+                    $propertyValues[$property->id] = $validated['property_' . $property->id];
+                }
+            }
+            
+            $assignedUserId = $validated['user_id'] ?? $assignmentService->determineAgent($campaign, $validated, $propertyValues);
+
             $lead = Lead::create([
                 'campaign_id' => $campaign->id,
-                'user_id' => $validated['user_id'] ?? null,
+                'user_id' => $assignedUserId,
                 'stage_id' => $defaultStageId,
                 'name' => $validated['name'],
                 'phone' => $validated['phone'],
@@ -162,7 +174,9 @@ class ContactController extends Controller
         $skipped = 0;
         $existingPhones = Lead::pluck('phone')->flip();
 
-        DB::transaction(function () use ($handle, $headerMap, $campaign, $validated, $defaultStageId, &$inserted, &$skipped, $existingPhones) {
+        $assignmentService = app(LeadAssignmentService::class);
+
+        DB::transaction(function () use ($handle, $headerMap, $campaign, $validated, $defaultStageId, &$inserted, &$skipped, $existingPhones, $assignmentService) {
             while (($row = fgetcsv($handle)) !== false) {
                 $rowData = $headerMap->mapWithKeys(function ($column, $index) use ($row) {
                     return [$column => trim((string) ($row[$index] ?? ''))];
@@ -180,10 +194,16 @@ class ContactController extends Controller
                     $skipped++;
                     continue;
                 }
+                
+                $leadData = [
+                    'source' => $validated['source'],
+                    'tags' => $rowData->get('tags')
+                ];
+                $assignedUserId = $validated['user_id'] ?? $assignmentService->determineAgent($campaign, $leadData, []);
 
                 Lead::create([
                     'campaign_id' => $campaign->id,
-                    'user_id' => $validated['user_id'] ?? null,
+                    'user_id' => $assignedUserId,
                     'stage_id' => $defaultStageId,
                     'name' => $name,
                     'phone' => $phone,

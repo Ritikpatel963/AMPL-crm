@@ -32,16 +32,20 @@ class ReportController extends Controller
 
         [$from, $to] = $this->resolveDateRange($request);
         $selectedReport = $request->get('report', 'User Report');
-        $reportData = $this->buildReportData($selectedReport, $from, $to);
+        $userId = $request->get('user_id');
+        $reportData = $this->buildReportData($selectedReport, $from, $to, $userId);
 
-        return view('callingcrm.reports.index', compact('reports', 'selectedReport', 'reportData', 'from', 'to'));
+        $agents = User::whereIn('role', ['agent', 'subadmin', 'manager'])->orderBy('name')->get(['id', 'name']);
+
+        return view('callingcrm.reports.index', compact('reports', 'selectedReport', 'reportData', 'from', 'to', 'agents', 'userId'));
     }
 
     public function export(Request $request): StreamedResponse
     {
         [$from, $to] = $this->resolveDateRange($request);
         $selectedReport = $request->get('report', 'User Report');
-        $reportData = $this->buildReportData($selectedReport, $from, $to);
+        $userId = $request->get('user_id');
+        $reportData = $this->buildReportData($selectedReport, $from, $to, $userId);
 
         $filename = 'callingcrm-report-' . now()->format('Ymd-His') . '.csv';
 
@@ -77,27 +81,30 @@ class ReportController extends Controller
         return [$from, $to];
     }
 
-    protected function buildReportData(string $selectedReport, Carbon $from, Carbon $to): array
+    protected function buildReportData(string $selectedReport, Carbon $from, Carbon $to, ?string $userId = null): array
     {
         return match ($selectedReport) {
-            'User Activity Report' => $this->userActivityReport($from, $to),
-            'Lead Disposition Report' => $this->leadDispositionReport($from, $to),
-            'User Stage Report' => $this->userStageReport($from, $to),
-            'User Call Report' => $this->userCallReport($from, $to),
-            'Follow-Up Report' => $this->followUpReport($from, $to),
-            'Login Report' => $this->loginReport($from, $to),
+            'User Activity Report' => $this->userActivityReport($from, $to, $userId),
+            'Lead Disposition Report' => $this->leadDispositionReport($from, $to, $userId),
+            'User Stage Report' => $this->userStageReport($from, $to, $userId),
+            'User Call Report' => $this->userCallReport($from, $to, $userId),
+            'Follow-Up Report' => $this->followUpReport($from, $to, $userId),
+            'Login Report' => $this->loginReport($from, $to, $userId),
             'Campaign Report' => $this->campaignReport($from, $to),
             'Campaign Lead Report' => $this->campaignLeadReport($from, $to),
             'Campaign Stage Report' => $this->campaignStageReport($from, $to),
-            default => $this->userReport($from, $to),
+            default => $this->userReport($from, $to, $userId),
         };
     }
 
-    protected function userReport(Carbon $from, Carbon $to): array
+    protected function userReport(Carbon $from, Carbon $to, ?string $userId): array
     {
-        $rows = User::whereIn('role', ['agent', 'subadmin'])
-            ->orderBy('name')
-            ->get()
+        $query = User::whereIn('role', ['agent', 'subadmin', 'manager'])->orderBy('name');
+        if ($userId) {
+            $query->where('id', $userId);
+        }
+
+        $rows = $query->get()
             ->map(function ($user) use ($from, $to) {
                 $calls = CallLog::where('user_id', $user->id)->whereBetween('called_at', [$from, $to]);
                 return [
@@ -116,11 +123,16 @@ class ReportController extends Controller
         ];
     }
 
-    protected function userActivityReport(Carbon $from, Carbon $to): array
+    protected function userActivityReport(Carbon $from, Carbon $to, ?string $userId): array
     {
-        $rows = UserSession::with('user:id,name')
-            ->whereBetween('logged_in_at', [$from, $to])
-            ->get()
+        $query = UserSession::with('user:id,name')
+            ->whereBetween('logged_in_at', [$from, $to]);
+            
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $rows = $query->get()
             ->groupBy('user_id')
             ->map(function ($sessions, $userId) use ($from, $to) {
                 $user = optional($sessions->first()->user)->name ?? 'Unknown';
@@ -142,12 +154,16 @@ class ReportController extends Controller
         ];
     }
 
-    protected function leadDispositionReport(Carbon $from, Carbon $to): array
+    protected function leadDispositionReport(Carbon $from, Carbon $to, ?string $userId): array
     {
-        $statusRows = collect(CallLog::STATUS_OPTIONS)->map(function ($status) use ($from, $to) {
+        $statusRows = collect(CallLog::STATUS_OPTIONS)->map(function ($status) use ($from, $to, $userId) {
+            $query = CallLog::where('status', $status)->whereBetween('called_at', [$from, $to]);
+            if ($userId) {
+                $query->where('user_id', $userId);
+            }
             return [
                 ucfirst(str_replace('_', ' ', $status)),
-                (int) CallLog::where('status', $status)->whereBetween('called_at', [$from, $to])->count(),
+                (int) $query->count(),
             ];
         })->all();
 
@@ -157,11 +173,16 @@ class ReportController extends Controller
         ];
     }
 
-    protected function userStageReport(Carbon $from, Carbon $to): array
+    protected function userStageReport(Carbon $from, Carbon $to, ?string $userId): array
     {
-        $rows = Lead::with(['assignedUser:id,name', 'stage:id,name'])
-            ->whereBetween('created_at', [$from, $to])
-            ->get()
+        $query = Lead::with(['assignedUser:id,name', 'stage:id,name'])
+            ->whereBetween('created_at', [$from, $to]);
+            
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $rows = $query->get()
             ->groupBy(fn ($lead) => optional($lead->assignedUser)->name ?? 'Unassigned')
             ->map(function ($leads, $user) {
                 return [
@@ -180,11 +201,14 @@ class ReportController extends Controller
         ];
     }
 
-    protected function userCallReport(Carbon $from, Carbon $to): array
+    protected function userCallReport(Carbon $from, Carbon $to, ?string $userId): array
     {
-        $rows = User::whereIn('role', ['agent', 'subadmin'])
-            ->orderBy('name')
-            ->get()
+        $query = User::whereIn('role', ['agent', 'subadmin', 'manager'])->orderBy('name');
+        if ($userId) {
+            $query->where('id', $userId);
+        }
+
+        $rows = $query->get()
             ->map(function ($user) use ($from, $to) {
                 $calls = CallLog::where('user_id', $user->id)->whereBetween('called_at', [$from, $to]);
                 return [
@@ -202,11 +226,16 @@ class ReportController extends Controller
         ];
     }
 
-    protected function followUpReport(Carbon $from, Carbon $to): array
+    protected function followUpReport(Carbon $from, Carbon $to, ?string $userId): array
     {
-        $rows = FollowUp::with('user:id,name')
-            ->whereBetween('scheduled_at', [$from, $to])
-            ->get()
+        $query = FollowUp::with('user:id,name')
+            ->whereBetween('scheduled_at', [$from, $to]);
+            
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $rows = $query->get()
             ->groupBy(fn ($followUp) => optional($followUp->user)->name ?? 'Unassigned')
             ->map(function ($items, $user) {
                 return [
@@ -224,11 +253,16 @@ class ReportController extends Controller
         ];
     }
 
-    protected function loginReport(Carbon $from, Carbon $to): array
+    protected function loginReport(Carbon $from, Carbon $to, ?string $userId): array
     {
-        $rows = UserSession::with('user:id,name')
-            ->whereBetween('logged_in_at', [$from, $to])
-            ->get()
+        $query = UserSession::with('user:id,name')
+            ->whereBetween('logged_in_at', [$from, $to]);
+            
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $rows = $query->get()
             ->map(function ($session) {
                 return [
                     optional($session->user)->name ?? 'Unknown',

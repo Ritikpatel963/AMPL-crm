@@ -4,6 +4,7 @@ namespace App\Http\Controllers\callingcrm;
 
 use App\Http\Controllers\Controller;
 use App\Models\callingcrm\Campaign;
+use App\Models\callingcrm\AssignmentRule;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -41,5 +42,26 @@ class CampaignController extends Controller
         return redirect()
             ->route('callingcrm.pipeline.show', $campaign)
             ->with('success', 'Calling CRM campaign created successfully.');
+    }
+
+    public function storeRule(Request $request, Campaign $campaign)
+    {
+        $validated = $request->validate([
+            'condition_field' => 'required|string',
+            'condition_operator' => 'required|in:equals,contains',
+            'condition_value' => 'required|string',
+            'user_id' => 'required|exists:users,id',
+            'sort_order' => 'nullable|integer'
+        ]);
+
+        $campaign->assignmentRules()->create($validated);
+
+        return back()->with('success', 'Assignment rule added successfully.');
+    }
+
+    public function destroyRule(Campaign $campaign, AssignmentRule $rule)
+    {
+        $rule->delete();
+        return back()->with('success', 'Assignment rule deleted.');
     }
 }
