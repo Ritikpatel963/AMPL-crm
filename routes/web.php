@@ -28,6 +28,7 @@ Route::view('/', 'welcome');
 
 // chatsystem routes
 // 🟩 User Dashboard
+// 🟩 User Dashboard
 Route::get('/dashboard', function () {
     $user = Auth::user(); // current logged-in user
 
@@ -115,26 +116,26 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
     //     return view('admin_panel.kyc.rejected');
     // })->name('kyc.rejected');
 
-    Route::get('/kyc/pending',  [AdminVendorController::class, 'pending'])->name('kyc.pending');
+    Route::get('/kyc/pending', [AdminVendorController::class, 'pending'])->name('kyc.pending');
     Route::get('/kyc/approved', [AdminVendorController::class, 'approved'])->name('kyc.approved');
     Route::get('/kyc/rejected', [AdminVendorController::class, 'rejected'])->name('kyc.rejected');
-    Route::get('/kyc/{id}',     [AdminVendorController::class, 'show'])->name('kyc.show');
+    Route::get('/kyc/{id}', [AdminVendorController::class, 'show'])->name('kyc.show');
     Route::post('/kyc/{id}/approve', [AdminVendorController::class, 'approve'])->name('kyc.approve');
-    Route::post('/kyc/{id}/reject',  [AdminVendorController::class, 'reject'])->name('kyc.reject');
+    Route::post('/kyc/{id}/reject', [AdminVendorController::class, 'reject'])->name('kyc.reject');
 
     // Vendors management
-    Route::get('/vendors',       [AdminVendorController::class, 'index'])->name('vendors.index');
-    Route::get('/vendors/{id}',  [AdminVendorController::class, 'vendorsShow'])->name('vendors.show');
+    Route::get('/vendors', [AdminVendorController::class, 'index'])->name('vendors.index');
+    Route::get('/vendors/{id}', [AdminVendorController::class, 'vendorsShow'])->name('vendors.show');
     Route::get('/vendors/{id}/products', [AdminVendorController::class, 'vendorProducts'])->name('vendors.products');
 
     // Vendor Categories management
-    Route::get('/vendor-categories',                [AdminVendorCategoryController::class, 'index'])->name('vendor_categories.index');
-    Route::get('/vendor-categories/create',        [AdminVendorCategoryController::class, 'create'])->name('vendor_categories.create');
-    Route::post('/vendor-categories',               [AdminVendorCategoryController::class, 'store'])->name('vendor_categories.store');
-    Route::get('/vendor-categories/{id}/edit',     [AdminVendorCategoryController::class, 'edit'])->name('vendor_categories.edit');
-    Route::put('/vendor-categories/{id}',           [AdminVendorCategoryController::class, 'update'])->name('vendor_categories.update');
-    Route::delete('/vendor-categories/{id}',        [AdminVendorCategoryController::class, 'destroy'])->name('vendor_categories.destroy');
- 
+    Route::get('/vendor-categories', [AdminVendorCategoryController::class, 'index'])->name('vendor_categories.index');
+    Route::get('/vendor-categories/create', [AdminVendorCategoryController::class, 'create'])->name('vendor_categories.create');
+    Route::post('/vendor-categories', [AdminVendorCategoryController::class, 'store'])->name('vendor_categories.store');
+    Route::get('/vendor-categories/{id}/edit', [AdminVendorCategoryController::class, 'edit'])->name('vendor_categories.edit');
+    Route::put('/vendor-categories/{id}', [AdminVendorCategoryController::class, 'update'])->name('vendor_categories.update');
+    Route::delete('/vendor-categories/{id}', [AdminVendorCategoryController::class, 'destroy'])->name('vendor_categories.destroy');
+
     // customer manues
     Route::get('/customers/view', function () {
         return view('admin_panel.customers.view');
