@@ -24,18 +24,6 @@ class PermissionController extends Controller
             'Chat' => ['Manage Chats'],
             'Orders' => ['Manage Orders', 'Approve Orders', 'Reject Orders', 'Delete Orders'],
             'Stock' => ['Manage Stock', 'Add Stock', 'Edit Stock'],
-            'Calling CRM' => [
-                'callingcrm.access',
-                'callingcrm.dashboard.view',
-                'callingcrm.contacts.view',
-                'callingcrm.contacts.create',
-                'callingcrm.contacts.import',
-                'callingcrm.pipeline.view',
-                'callingcrm.pipeline.manage',
-                'callingcrm.reports.view',
-                'callingcrm.reports.export',
-                'callingcrm.trends.view',
-            ],
         ];
 
         return view('admin_panel.permission.role_permission', compact('roles', 'permissions'));

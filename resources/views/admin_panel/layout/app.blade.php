@@ -151,21 +151,6 @@
                         </ul>
                     </li>
                     <li class="collapsed">
-                        <a class="m-link" data-bs-toggle="collapse" data-bs-target="#menu-callingcrm"
-                            href="#">
-                            <i class="icofont-ui-call fs-5"></i> <span>Calling CRM</span> <span
-                                class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
-                        <ul class="sub-menu collapse" id="menu-callingcrm">
-                            <li><a class="ms-link" href="{{ route('callingcrm.dashboard') }}">Dashboard</a></li>
-                            <li><a class="ms-link" href="{{ route('callingcrm.contacts.index') }}">Contacts</a></li>
-                            <li><a class="ms-link" href="{{ route('callingcrm.contacts.create') }}">Add Lead</a></li>
-                            <li><a class="ms-link" href="{{ route('callingcrm.contacts.upload') }}">Upload Excel</a></li>
-                            <li><a class="ms-link" href="{{ route('callingcrm.pipeline.index') }}">Pipeline</a></li>
-                            <li><a class="ms-link" href="{{ route('callingcrm.reports.index') }}">Reports</a></li>
-                            <li><a class="ms-link" href="{{ route('callingcrm.trends.index') }}">Trends</a></li>
-                        </ul>
-                    </li>
-                    <li class="collapsed">
                         <a class="m-link" data-bs-toggle="collapse" data-bs-target="#menu-product_chat"
                             href="#">
                             <i class="icofont-clock-time fs-5"></i> <span>History</span> <span

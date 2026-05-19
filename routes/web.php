@@ -206,6 +206,3 @@ Route::view('profile', 'profile')
 // 🟩 Auth scaffolding routes
 require __DIR__ . '/auth.php';
 
-// Calling CRM
-// Add all Calling CRM routes below this comment.
-require __DIR__ . '/callingcrm.php';
