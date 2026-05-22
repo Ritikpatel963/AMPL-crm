@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('lead_id')->constrained('leads')->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->enum('status', ['connected', 'not_connected', 'busy', 'no_answer'])->default('not_connected');
+            $table->enum('status', ['initiated', 'ringing', 'connected', 'answered', 'not_connected', 'busy', 'no_answer', 'failed', 'missed'])->default('not_connected');
             $table->unsignedInteger('duration')->default(0);
             $table->text('notes')->nullable();
             $table->timestamp('called_at');
@@ -43,7 +43,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('pipeline_id')->constrained('pipelines')->cascadeOnDelete();
             $table->string('name');
-            $table->enum('type', ['in_progress', 'closed_won', 'closed_lost']);
+            $table->enum('type', ['fresh', 'in_progress', 'closed_won', 'closed_lost', 'not_connected']);
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });

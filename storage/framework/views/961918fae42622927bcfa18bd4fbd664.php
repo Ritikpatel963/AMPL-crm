@@ -1,0 +1,700 @@
+<?php $__env->startSection('title', 'Calling CRM Dashboard'); ?>
+<?php $__env->startPush('styles'); ?>
+<link rel="stylesheet" href="<?php echo e(asset('css/crm/calling-crm.css')); ?>">
+<?php $__env->stopPush(); ?>
+
+<?php echo $__env->make('admin_panel.callingcrm.partials.ui-polish', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+
+<?php $__env->startSection('main-content'); ?>
+<div class="calling-crm-canvas"><main class="main-wrapper">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <div class="header-actions">
+      <div class="badge-btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Analytics
+      </div>
+      <div class="badge-btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        Alerts
+      </div>
+      <div class="avatar">AS</div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD GRID -->
+  <div class="dashboard-grid">
+
+    <!-- CALL OVERVIEW -->
+    <div class="card call-overview-card">
+      <div class="card-header">
+        <span class="card-title">Call Overview</span>
+        <div class="card-actions">
+          <a href="<?php echo e(route('admin_panel.admin.callingcrm.report')); ?>" class="view-report-link">View Report</a>
+          <div class="crm-filter" data-filter>
+            <button type="button" class="date-filter" data-filter-toggle>
+              <span class="crm-filter-label" data-filter-label>Last 7 Days</span>
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="crm-popover">
+              <div class="crm-popover-title">Choose Date</div>
+              <div class="crm-popover-body">
+                <label class="crm-choice"><input type="radio" name="dashboard_date" value="This Month"><span class="crm-radio"></span><span>This Month</span></label>
+                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Yesterday"><span class="crm-radio"></span><span>Yesterday</span></label>
+                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Today"><span class="crm-radio"></span><span>Today</span></label>
+                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Last 7 Days" checked><span class="crm-radio"></span><span>Last 7 days</span></label>
+                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Last 30 Days"><span class="crm-radio"></span><span>Last 30 days</span></label>
+                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Custom Range"><span class="crm-radio"></span><span>Custom Range</span></label>
+              </div>
+              <div class="crm-popover-footer">
+                <button type="button" class="crm-apply-btn" data-filter-apply>Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="donut-container">
+        <div class="donut-svg-wrap">
+          <svg class="donut" width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="52" fill="none" stroke="#DDCEF5" stroke-width="26"/>
+            <circle cx="70" cy="70" r="52" fill="none" stroke="#763ABB" stroke-width="26"
+              stroke-dasharray="0 326.73" stroke-dashoffset="0" data-crm-connected-ring
+              stroke-linecap="round" transform="rotate(-90 70 70)"
+              style="transition: stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1);"/>
+          </svg>
+          <div class="donut-center">
+            <div class="donut-pct" data-crm-connected-percent><span class="skeleton-loader" style="width: 45px; height: 28px; border-radius: 4px;"></span></div>
+            <div class="donut-label">Connected</div>
+          </div>
+        </div>
+
+        <div class="donut-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#763ABB;"></div>
+            <div class="legend-info">
+              <span class="legend-name">Connected</span>
+              <span class="legend-count" data-crm-connected-calls><span class="skeleton-loader" style="width: 32px; height: 16px;"></span></span>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#DDCEF5;"></div>
+            <div class="legend-info">
+              <span class="legend-name">Total</span>
+              <span class="legend-count" data-crm-total-calls><span class="skeleton-loader" style="width: 38px; height: 16px;"></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENT ACTIVITY -->
+    <div class="card agent-activity-card">
+      <div class="card-header">
+        <span class="card-title">Agent Activity</span>
+        <span class="live-pill">Live now</span>
+      </div>
+      <div class="agent-grid">
+        <div class="agent-stat">
+          <div class="agent-icon active-icon">
+            <svg width="20" height="20" fill="none" stroke="#763ABB" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="agent-label">Active Agents<br><small style="opacity:.7;">Currently on tasks</small></div>
+          <div class="agent-numbers">
+            <span class="agent-num" data-crm-active-agents><span class="skeleton-loader" style="width: 25px; height: 20px;"></span></span>
+            <span class="agent-total" data-crm-total-agents>/ <span class="skeleton-loader" style="width: 25px; height: 14px;"></span></span>
+          </div>
+          <div class="agent-bar">
+            <div class="agent-bar-fill active" style="width:0%;" data-crm-active-agent-bar></div>
+          </div>
+        </div>
+
+        <div class="agent-stat">
+          <div class="agent-icon break-icon">
+            <svg width="20" height="20" fill="none" stroke="#F59E0B" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+          </div>
+          <div class="agent-label">On-break Agents<br><small style="opacity:.7;">Currently resting</small></div>
+          <div class="agent-numbers">
+            <span class="agent-num break" data-crm-break-agents><span class="skeleton-loader" style="width: 25px; height: 20px;"></span></span>
+            <span class="agent-total" data-crm-total-agents>/ <span class="skeleton-loader" style="width: 25px; height: 14px;"></span></span>
+          </div>
+          <div class="agent-bar">
+            <div class="agent-bar-fill break" style="width:0%;" data-crm-break-agent-bar></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEADS BY STAGE -->
+    <div class="card leads-card">
+      <div class="leads-card-header">
+        <span class="card-title">Leads by Stage</span>
+        <div class="leads-filters">
+          <div class="crm-filter" data-filter>
+            <button type="button" class="date-filter" data-filter-toggle>
+              <span class="crm-filter-label" data-filter-label><span class="skeleton-loader" style="width: 70px; height: 12px; border-radius: 3px;"></span></span>
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="crm-popover popover-left">
+              <div class="crm-popover-title">Choose Pipeline</div>
+              <div class="crm-popover-body" data-crm-pipeline-filter-options>
+                <input type="search" class="crm-search" placeholder="Search">
+                <div class="dashboard-state">Loading pipelines...</div>
+              </div>
+              <div class="crm-popover-footer">
+                <button type="button" class="crm-apply-btn" data-filter-apply>Apply</button>
+              </div>
+            </div>
+          </div>
+          <div class="crm-filter" data-filter>
+            <button type="button" class="date-filter" data-filter-toggle>
+              <span class="crm-filter-label" data-filter-label><span class="skeleton-loader" style="width: 60px; height: 12px; border-radius: 3px;"></span></span>
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="crm-popover">
+              <div class="crm-popover-title">Choose Campaign</div>
+              <div class="crm-popover-body" data-crm-campaign-filter-options>
+                <input type="search" class="crm-search" placeholder="Search">
+                <div class="dashboard-state">Loading campaigns...</div>
+              </div>
+              <div class="crm-popover-footer">
+                <button type="button" class="crm-apply-btn" data-filter-apply>Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="leads-list" data-crm-leads-by-stage>
+        <div class="lead-item" style="border-left-color: rgba(228, 231, 239, 0.6); pointer-events: none;">
+          <div class="lead-left">
+            <span class="lead-count"><span class="skeleton-loader" style="width: 25px; height: 16px;"></span></span>
+            <span class="lead-name"><span class="skeleton-loader" style="width: 100px; height: 14px;"></span></span>
+          </div>
+          <span class="lead-pct"><span class="skeleton-loader" style="width: 40px; height: 14px;"></span></span>
+        </div>
+        <div class="lead-item" style="border-left-color: rgba(228, 231, 239, 0.6); pointer-events: none;">
+          <div class="lead-left">
+            <span class="lead-count"><span class="skeleton-loader" style="width: 25px; height: 16px;"></span></span>
+            <span class="lead-name"><span class="skeleton-loader" style="width: 80px; height: 14px;"></span></span>
+          </div>
+          <span class="lead-pct"><span class="skeleton-loader" style="width: 40px; height: 14px;"></span></span>
+        </div>
+        <div class="lead-item" style="border-left-color: rgba(228, 231, 239, 0.6); pointer-events: none;">
+          <div class="lead-left">
+            <span class="lead-count"><span class="skeleton-loader" style="width: 25px; height: 16px;"></span></span>
+            <span class="lead-name"><span class="skeleton-loader" style="width: 120px; height: 14px;"></span></span>
+          </div>
+          <span class="lead-pct"><span class="skeleton-loader" style="width: 40px; height: 14px;"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOLS TO IMPROVE EFFICIENCY -->
+    <div class="card tools-card">
+      <div class="card-header">
+        <span class="card-title">Tools to Improve Efficiency &amp; Outcomes</span>
+      </div>
+      <div class="tools-grid">
+        <a class="tool-item" href="<?php echo e(route('admin_panel.admin.callingcrm.trends')); ?>">
+          <div class="tool-icon-wrap">📈</div>
+          <div class="tool-info">
+            <span class="tool-name">User Trends</span>
+            <span class="tool-desc">Discover how your calls, conversions, and breaks have evolved over time.</span>
+          </div>
+        </a>
+        <a class="tool-item" href="<?php echo e(route('admin_panel.admin.callingcrm.trends')); ?>">
+          <div class="tool-icon-wrap">📊</div>
+          <div class="tool-info">
+            <span class="tool-name">Business Trend</span>
+            <span class="tool-desc">Get business insights on conversions, calls &amp; lead sources driving results.</span>
+          </div>
+        </a>
+        <a class="tool-item" href="<?php echo e(route('admin_panel.admin.callingcrm.pipeline')); ?>">
+          <div class="tool-icon-wrap">⚡</div>
+          <div class="tool-info">
+            <span class="tool-name">Workflow</span>
+            <span class="tool-desc">Create workflows to handle actions like sending WhatsApp messages and more.</span>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- QUICK ACCESS -->
+    <div class="card quick-card">
+      <div class="card-header">
+        <span class="card-title">Quick Access</span>
+      </div>
+      <div class="quick-grid">
+        <a class="quick-item" href="<?php echo e(route('admin_panel.admin.callingcrm.report.user')); ?>">
+          <div class="quick-icon">📞</div>
+          <span class="quick-label">User Call Report</span>
+          <span class="quick-arrow">›</span>
+        </a>
+        <a class="quick-item" href="<?php echo e(route('admin_panel.admin.callingcrm.report.login')); ?>">
+          <div class="quick-icon">🔐</div>
+          <span class="quick-label">User Login Report</span>
+          <span class="quick-arrow">›</span>
+        </a>
+        <button type="button" class="quick-item" data-upload-open>
+          <div class="quick-icon">📤</div>
+          <span class="quick-label">Upload Excel Sheet</span>
+          <span class="quick-arrow">›</span>
+        </button>
+        <button type="button" class="quick-item" data-campaign-open>
+          <div class="quick-icon">🚀</div>
+          <span class="quick-label">Create Campaign</span>
+          <span class="quick-arrow">›</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PINNED CAMPAIGNS -->
+    <div class="card pinned-section">
+      <div class="pinned-header">
+        <span class="card-title">Pinned Campaigns</span>
+        <div class="pinned-actions">
+          <a href="<?php echo e(route('admin_panel.admin.callingcrm.report')); ?>" class="report-link">Campaigns Report</a>
+          <button type="button" class="add-btn" data-pin-open>+</button>
+        </div>
+      </div>
+      <div class="pinned-list" data-crm-pinned-campaigns>
+        <div class="pinned-campaign" style="pointer-events: none;">
+          <span class="pinned-campaign-name"><span class="skeleton-loader" style="width: 120px; height: 14px;"></span></span>
+          <span class="pinned-campaign-meta"><span class="skeleton-loader" style="width: 50px; height: 14px;"></span></span>
+        </div>
+        <div class="pinned-campaign" style="pointer-events: none;">
+          <span class="pinned-campaign-name"><span class="skeleton-loader" style="width: 150px; height: 14px;"></span></span>
+          <span class="pinned-campaign-meta"><span class="skeleton-loader" style="width: 50px; height: 14px;"></span></span>
+        </div>
+        <div class="pinned-campaign" style="pointer-events: none;">
+          <span class="pinned-campaign-name"><span class="skeleton-loader" style="width: 95px; height: 14px;"></span></span>
+          <span class="pinned-campaign-meta"><span class="skeleton-loader" style="width: 50px; height: 14px;"></span></span>
+        </div>
+      </div>
+      <div class="view-all-link">
+        <a href="<?php echo e(route('admin_panel.admin.callingcrm.pipeline')); ?>">View All Campaigns &rsaquo;</a>
+      </div>
+    </div>
+
+  </div><!-- end grid -->
+
+  <div class="crm-popover-layer" data-popover-layer></div>
+
+  <div class="crm-modal-backdrop" data-upload-modal>
+    <div class="crm-modal crm-large-modal" role="dialog" aria-modal="true" aria-labelledby="uploadExcelTitle">
+      <div class="crm-modal-head">
+        <div class="modal-title-wrap">
+          <div class="crm-modal-title" id="uploadExcelTitle">Upload Excel Sheet</div>
+          <div class="learn-more-pill">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9z"/></svg>
+            Learn More
+          </div>
+        </div>
+        <button type="button" class="crm-modal-close" data-upload-close aria-label="Close">&times;</button>
+      </div>
+      <div class="upload-dropzone">
+        <div>
+          <div class="upload-icon">↑</div>
+          <div class="upload-drop-text">Drag and drop file</div>
+          <button type="button" class="upload-browse-btn">Browse</button>
+          <div class="upload-format">Supported formats are .csv, .xls, .xlsx</div>
+        </div>
+      </div>
+      <div class="upload-meta-row">
+        <div>Max leads: 25,000 at a time, file size limit: 3MB.</div>
+        <a href="#" class="sample-link">Download Sample file</a>
+      </div>
+      <div class="upload-note">No specific column order needed! Just include crucial details like name and number in the file.</div>
+    </div>
+  </div>
+
+  <div class="crm-modal-backdrop" data-campaign-modal>
+    <div class="crm-modal crm-campaign-modal" role="dialog" aria-modal="true" aria-labelledby="createCampaignTitle">
+      <div class="crm-modal-head">
+        <div class="modal-title-wrap">
+          <div class="crm-modal-title" id="createCampaignTitle">Create Campaign</div>
+          <div class="learn-more-pill">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9z"/></svg>
+            Learn More
+          </div>
+        </div>
+        <button type="button" class="crm-modal-close" data-campaign-close aria-label="Close">&times;</button>
+      </div>
+      <form id="campaignCreateForm" class="campaign-form" novalidate>
+        <div class="campaign-grid">
+          <div class="campaign-field">
+            <label>Name</label>
+            <input class="campaign-input" id="campaignNameInput" required placeholder="Campaign Name">
+          </div>
+          <div class="campaign-field">
+            <label>Pipeline</label>
+            <div style="position: relative;">
+              <select class="campaign-input" id="campaignPipelineSelect" required style="width: 100%; padding-right: 32px; appearance: none; -webkit-appearance: none;">
+                <option value="" disabled selected>Select Pipeline</option>
+              </select>
+              <div class="campaign-select" style="position: absolute; right: 0; top: 0; bottom: 0; border: none; padding: 0 12px; display: flex; align-items: center; pointer-events: none; background: transparent;">
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path d="M5.5 7.5 10 12l4.5-4.5H5.5z"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="campaign-field campaign-field-wide">
+            <label>Who will be managing this campaign?</label>
+            <div class="campaign-box" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; padding: 6px 12px; position: relative;">
+              <div id="campaignManagersChips" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+              <input type="text" id="campaignManagerSearch" placeholder="Type to search managers..." autocomplete="off" style="border: none; outline: none; flex: 1; min-width: 150px; font-size: 13px; color: var(--text); background: transparent;">
+              <div id="campaignManagerDropdown" class="crm-popover" style="display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 1000; background: #fff; border: 1px solid var(--border); border-radius: 8px; max-height: 180px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-top: 4px;">
+              </div>
+            </div>
+          </div>
+          <div class="campaign-field campaign-field-wide">
+            <label>Select Agents</label>
+            <div class="campaign-box" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; padding: 6px 12px; position: relative;">
+              <div id="campaignAgentsChips" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+              <input type="text" id="campaignAgentSearch" placeholder="Type to search agents..." autocomplete="off" style="border: none; outline: none; flex: 1; min-width: 150px; font-size: 13px; color: var(--text); background: transparent;">
+              <div id="campaignAgentDropdown" class="crm-popover" style="display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 1000; background: #fff; border: 1px solid var(--border); border-radius: 8px; max-height: 180px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-top: 4px;">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="campaign-section-title">Lead Distribution</div>
+        <div class="distribution-options">
+          <div class="distribution-card selected" data-strategy="on_demand">
+            <div class="distribution-title"><span class="distribution-radio"></span>On Demand</div>
+            <div>Leads stay unassigned until a user assigns it to themself or clicks Start Calling, then the system assigns ten lead at a time.</div>
+          </div>
+          <div class="distribution-card" data-strategy="equal">
+            <div class="distribution-title"><span class="distribution-radio"></span>Equal</div>
+            <div>Distributes leads equally among all agents in the campaign, ensuring fair allocation.</div>
+          </div>
+          <div class="distribution-card" data-strategy="conditional">
+            <div class="distribution-title"><span class="distribution-radio"></span>Conditional</div>
+            <div>Assigns leads based on set conditions, ensuring the right leads go to the right agents.</div>
+          </div>
+        </div>
+        <button type="button" class="additional-settings" id="campaignAdditionalSettingsBtn">
+          <span class="additional-settings-title">Additional Settings <span class="additional-info">i</span></span>
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="additional-settings-content" id="campaignAdditionalSettingsContent" style="display: none; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: #fbf7ff; margin-bottom: 16px;">
+          <div class="campaign-grid">
+            <div class="campaign-field">
+              <label>Priority</label>
+              <div style="position: relative;">
+                <select class="campaign-input" id="campaignPrioritySelect" style="width: 100%; padding-right: 32px; appearance: none; -webkit-appearance: none;">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+                <div style="position: absolute; right: 12px; top: 11px; pointer-events: none; color: #a4a8b2; display: flex; align-items: center;">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path d="M5.5 7.5 10 12l4.5-4.5H5.5z"/></svg>
+                </div>
+              </div>
+            </div>
+            <div></div>
+            <div class="campaign-field campaign-field-wide" style="margin-top: 6px;">
+              <span class="additional-settings-title" style="font-size: 13px; font-weight: 800; color: var(--text);">Lead Duplicacy</span>
+            </div>
+            <div class="campaign-field">
+              <label>Check for Duplicates</label>
+              <div style="position: relative;">
+                <select class="campaign-input" id="campaignDuplicacyScope" style="width: 100%; padding-right: 32px; appearance: none; -webkit-appearance: none;">
+                  <option value="none">Don't Check</option>
+                  <option value="campaign" selected>Within This Campaign</option>
+                  <option value="pipeline">Within This Pipeline</option>
+                  <option value="org">Within Organization</option>
+                </select>
+                <div style="position: absolute; right: 12px; top: 11px; pointer-events: none; color: #a4a8b2; display: flex; align-items: center;">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path d="M5.5 7.5 10 12l4.5-4.5H5.5z"/></svg>
+                </div>
+              </div>
+            </div>
+            <div class="campaign-field">
+              <label>If Duplicate Found</label>
+              <div style="position: relative;">
+                <select class="campaign-input" id="campaignDuplicacyAction" style="width: 100%; padding-right: 32px; appearance: none; -webkit-appearance: none;">
+                  <option value="ignore" selected>Ignore Duplicate</option>
+                  <option value="block">Block Duplicate</option>
+                  <option value="merge">Merge Duplicate</option>
+                  <option value="reassign">Reassign Duplicate</option>
+                </select>
+                <div style="position: absolute; right: 12px; top: 11px; pointer-events: none; color: #a4a8b2; display: flex; align-items: center;">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path d="M5.5 7.5 10 12l4.5-4.5H5.5z"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="campaign-create-row">
+          <button type="submit" class="campaign-create-btn" id="campaignSubmitBtn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="crm-modal-backdrop" data-pin-modal>
+    <div class="crm-modal" role="dialog" aria-modal="true" aria-labelledby="pinCampaignTitle">
+      <div class="crm-modal-head">
+        <div class="crm-modal-title" id="pinCampaignTitle">Pin Campaign</div>
+        <button type="button" class="crm-modal-close" data-pin-close aria-label="Close">&times;</button>
+      </div>
+      <div class="crm-modal-search">
+        <input type="search" placeholder="Search Campaigns" data-pin-search>
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+      </div>
+      <div class="pin-list">
+        <div class="pin-option">MP Raw Data</div>
+        <div class="pin-option selected">MP Transacted</div>
+        <div class="pin-option">SME Data</div>
+        <div class="pin-option">Trading RAW</div>
+        <div class="pin-option">Trading Transacted</div>
+      </div>
+      <div class="crm-modal-footer">
+        <button type="button" class="crm-modal-btn" data-pin-close>Cancel</button>
+        <button type="button" class="crm-modal-btn" data-pin-close>Confirm</button>
+      </div>
+    </div>
+  </div>
+
+</main></div>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startPush('scripts'); ?>
+<script>
+let activeFilter = null;
+const popoverLayer = document.querySelector('[data-popover-layer]');
+
+document.addEventListener('click', function (event) {
+  document.querySelectorAll('[data-filter].open').forEach(function (filter) {
+    const popover = filter._activePopover;
+    if (!filter.contains(event.target) && !(popover && popover.contains(event.target))) {
+      closeFilter(filter);
+    }
+  });
+});
+
+function closeFilter(filter) {
+  const popover = filter._activePopover || filter.querySelector('.crm-popover');
+  filter.classList.remove('open');
+  if (popover) {
+    popover.style.removeProperty('top');
+    popover.style.removeProperty('left');
+    popover.style.removeProperty('width');
+    if (filter._popoverParent && popover.parentElement !== filter._popoverParent) {
+      filter._popoverParent.appendChild(popover);
+    }
+  }
+  filter._activePopover = null;
+  filter._popoverParent = null;
+  const card = filter.closest('.card');
+  if (card) {
+    card.classList.remove('filter-active');
+  }
+  if (activeFilter === filter) {
+    activeFilter = null;
+  }
+}
+
+function positionFilterPopover(filter) {
+  const button = filter.querySelector('[data-filter-toggle]');
+  const popover = filter._activePopover || filter.querySelector('.crm-popover');
+  if (!button || !popover) {
+    return;
+  }
+
+  const gap = 10;
+  const viewportPadding = 12;
+  const rect = button.getBoundingClientRect();
+  const popoverWidth = Math.min(268, window.innerWidth - viewportPadding * 2);
+  popover.style.width = popoverWidth + 'px';
+
+  let left = rect.right - popoverWidth;
+  if (popover.classList.contains('popover-left')) {
+    left = rect.left;
+  }
+  left = Math.max(viewportPadding, Math.min(left, window.innerWidth - popoverWidth - viewportPadding));
+
+  let top = rect.bottom + gap;
+  const availableBelow = window.innerHeight - top - viewportPadding;
+  const naturalHeight = Math.min(popover.scrollHeight || 0, 420);
+  if (availableBelow < 180 && rect.top > availableBelow) {
+    top = Math.max(viewportPadding, rect.top - naturalHeight - gap);
+  }
+
+  popover.style.left = left + 'px';
+  popover.style.top = top + 'px';
+}
+
+document.querySelectorAll('[data-filter-toggle]').forEach(function (button) {
+  button.addEventListener('click', function (event) {
+    event.stopPropagation();
+    const filter = button.closest('[data-filter]');
+
+    if (filter.classList.contains('open')) {
+      closeFilter(filter);
+      return;
+    }
+
+    document.querySelectorAll('[data-filter].open').forEach(closeFilter);
+
+    const popover = filter.querySelector('.crm-popover');
+    if (popover && popoverLayer) {
+      filter._popoverParent = popover.parentElement;
+      filter._activePopover = popover;
+      popoverLayer.appendChild(popover);
+    }
+
+    filter.classList.add('open');
+    activeFilter = filter;
+    const card = filter.closest('.card');
+    if (card) {
+      card.classList.add('filter-active');
+    }
+    positionFilterPopover(filter);
+  });
+});
+
+document.querySelectorAll('[data-filter-apply]').forEach(function (button) {
+  button.addEventListener('click', function () {
+    const filter = activeFilter;
+    if (!filter) {
+      return;
+    }
+    const label = filter.querySelector('[data-filter-label]');
+    const popover = filter._activePopover || filter.querySelector('.crm-popover');
+    const checkedBoxes = Array.from(popover.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(function (input) { return input.value; })
+      .filter(function (value) { return value !== 'Select all'; });
+    const checkedRadio = popover.querySelector('input[type="radio"]:checked');
+
+    if (checkedBoxes.length) {
+      label.textContent = checkedBoxes.length === 1 ? checkedBoxes[0] : checkedBoxes.length + ' selected';
+    } else if (checkedRadio) {
+      label.textContent = checkedRadio.closest('.crm-choice')?.textContent.trim() || checkedRadio.value;
+    }
+
+    closeFilter(filter);
+  });
+});
+
+window.addEventListener('resize', function () {
+  document.querySelectorAll('[data-filter].open').forEach(positionFilterPopover);
+});
+
+window.addEventListener('scroll', function () {
+  document.querySelectorAll('[data-filter].open').forEach(positionFilterPopover);
+}, true);
+
+document.querySelectorAll('.crm-popover').forEach(function (popover) {
+  popover.addEventListener('click', function (event) {
+    event.stopPropagation();
+  });
+});
+
+document.querySelectorAll('.crm-search').forEach(function (input) {
+  input.addEventListener('input', function () {
+    const query = input.value.trim().toLowerCase();
+    const body = input.closest('.crm-popover-body');
+    body.querySelectorAll('.crm-choice').forEach(function (choice) {
+      choice.style.display = choice.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
+    });
+  });
+});
+
+const campaignSelectAll = document.querySelector('input[value="Select all"]');
+if (campaignSelectAll) {
+  campaignSelectAll.addEventListener('change', function () {
+    const popover = campaignSelectAll.closest('.crm-popover');
+    popover.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+      checkbox.checked = campaignSelectAll.checked;
+    });
+  });
+}
+
+const pinModal = document.querySelector('[data-pin-modal]');
+const openPinModal = document.querySelector('[data-pin-open]');
+const closePinButtons = document.querySelectorAll('[data-pin-close]');
+const uploadModal = document.querySelector('[data-upload-modal]');
+const openUploadModal = document.querySelector('[data-upload-open]');
+const closeUploadButtons = document.querySelectorAll('[data-upload-close]');
+const campaignModal = document.querySelector('[data-campaign-modal]');
+const openCampaignModal = document.querySelector('[data-campaign-open]');
+const closeCampaignButtons = document.querySelectorAll('[data-campaign-close]');
+
+function bindModal(modal, openButton, closeButtons) {
+  if (modal && openButton) {
+    openButton.addEventListener('click', function () {
+      modal.classList.add('open');
+    });
+  }
+
+  closeButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      modal.classList.remove('open');
+    });
+  });
+
+  if (modal) {
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) {
+        modal.classList.remove('open');
+      }
+    });
+  }
+}
+
+bindModal(uploadModal, openUploadModal, closeUploadButtons);
+bindModal(campaignModal, openCampaignModal, closeCampaignButtons);
+
+if (pinModal && openPinModal) {
+  openPinModal.addEventListener('click', function () {
+    pinModal.classList.add('open');
+  });
+}
+
+closePinButtons.forEach(function (button) {
+  button.addEventListener('click', function () {
+    pinModal.classList.remove('open');
+  });
+});
+
+if (pinModal) {
+  pinModal.addEventListener('click', function (event) {
+    if (event.target === pinModal) {
+      pinModal.classList.remove('open');
+    }
+  });
+}
+
+document.querySelectorAll('.pin-option').forEach(function (option) {
+  option.addEventListener('click', function () {
+    document.querySelectorAll('.pin-option').forEach(function (item) {
+      item.classList.remove('selected');
+    });
+    option.classList.add('selected');
+  });
+});
+
+const pinSearch = document.querySelector('[data-pin-search]');
+if (pinSearch) {
+  pinSearch.addEventListener('input', function () {
+    const query = pinSearch.value.trim().toLowerCase();
+    document.querySelectorAll('.pin-option').forEach(function (option) {
+      option.style.display = option.textContent.toLowerCase().includes(query) ? 'block' : 'none';
+    });
+  });
+}
+</script>
+<?php $__env->stopPush(); ?>
+
+
+
+<?php $__env->startPush('scripts'); ?>
+<script src="<?php echo e(asset('js/crm/crm-core.js')); ?>"></script>
+<script type="module" src="<?php echo e(asset('js/crm/campaigns.js')); ?>"></script>
+<?php $__env->stopPush(); ?>
+
+<?php echo $__env->make('admin_panel.layout.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH E:\website-project\Amplchat\CMS\resources\views/admin_panel/callingcrm/dashboard.blade.php ENDPATH**/ ?>

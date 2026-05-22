@@ -23,6 +23,8 @@ return new class extends Migration
                 'WORKFLOW',
                 'GOOGLE_SHEET',
                 'MANUAL',
+                'API',
+                'WEBHOOK',
             ])->default('MANUAL');
             $table->json('tags')->nullable();
             $table->timestamps();

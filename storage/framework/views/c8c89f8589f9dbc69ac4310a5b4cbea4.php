@@ -15,18 +15,12 @@
         integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
     <!-- Project CSS -->
     <link rel="stylesheet" href="<?php echo e(asset('assets/css/ebazar.style.min.css')); ?>?v=1.0">
 
+    <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     <?php echo $__env->yieldPushContent('styles'); ?>
-
-    <!-- jQuery (required by DataTables) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 </head>
 
 <body>
@@ -42,6 +36,20 @@
                     <span class="logo-text">Admin Panel</span>
                 </a>
                 <!-- Menu: main ul -->
+                <?php
+                    $isUserMenu = request()->routeIs('admin_panel.admin.users.*');
+                    $isVendorMenu = request()->routeIs('admin_panel.admin.vendors.*') || request()->routeIs('admin_panel.admin.vendor_categories.*');
+                    $isKycMenu = request()->routeIs('admin_panel.admin.kyc.*');
+                    $isProductMenu = request()->routeIs('admin_panel.admin.products.*') || request()->routeIs('admin_panel.admin.categories.*');
+                    $isShippingMenu = request()->routeIs('admin_panel.admin.shipping.*');
+                    $isCustomerMenu = request()->routeIs('admin_panel.admin.customers.*');
+                    $isPaymentMenu = request()->routeIs('admin_panel.admin.payments.*');
+                    $isPermissionMenu = request()->routeIs('admin_panel.admin.role') || request()->routeIs('admin_panel.admin.permissions.*');
+                    $isHistoryMenu = request()->routeIs('admin_panel.admin.chatlogs.*');
+                    $isOrderMenu = request()->routeIs('admin_panel.admin.orders.*') || request()->routeIs('orders.*');
+                    $isStockMenu = request()->routeIs('admin_panel.admin.stocks.*') || request()->routeIs('admin_panel.admin.stock.*');
+                    $isCallingCrmMenu = request()->routeIs('admin_panel.admin.callingcrm.*');
+                ?>
                 <ul class="menu-list flex-grow-1 mt-3">
                     <li><a class="m-link active" href="<?php echo e(route('admin_panel.admin.index')); ?>"><i
                                 class="icofont-home fs-5"></i> <span>Dashboard</span></a></li>
@@ -51,7 +59,7 @@
                                 <i class="icofont-users-alt-2 fs-5"></i> <span>User Management</span> <span
                                     class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                             <!-- Menu: Sub menu ul -->
-                            <ul class="sub-menu collapse" id="menu-product_user">
+                            <ul class="sub-menu collapse<?php echo e($isUserMenu ? ' show' : ''); ?>" id="menu-product_user">
                                 <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.users.index')); ?>">Users</a></li>
                             </ul>
                         </li>
@@ -61,7 +69,7 @@
                             <i class="icofont-users fs-5"></i> <span>Vendor Management</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-vendor">
+                        <ul class="sub-menu collapse<?php echo e($isVendorMenu ? ' show' : ''); ?>" id="menu-vendor">
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.vendors.index')); ?>">All Vendors</a></li>
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.vendor_categories.index')); ?>">Vendor Categories</a></li>
                         </ul>
@@ -71,7 +79,7 @@
                             <i class="icofont-file-alt fs-5"></i> <span>Kyc Management</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_kyc">
+                        <ul class="sub-menu collapse<?php echo e($isKycMenu ? ' show' : ''); ?>" id="menu-product_kyc">
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.kyc.pending')); ?>">Pending Kyc</a>
                             </li>
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.kyc.approved')); ?>">Approved Kyc</a>
@@ -86,7 +94,7 @@
                             <i class="icofont-box  fs-5"></i> <span>Product Management</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_p">
+                        <ul class="sub-menu collapse<?php echo e($isProductMenu ? ' show' : ''); ?>" id="menu-product_p">
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.products.index')); ?>">Products
                                     List</a>
                             </li>
@@ -103,7 +111,7 @@
                             <i class="icofont-truck-loaded fs-5"></i> <span>Shipping</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_ship">
+                        <ul class="sub-menu collapse<?php echo e($isShippingMenu ? ' show' : ''); ?>" id="menu-product_ship">
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.shipping.index')); ?>">Shipping</a>
                                 
                         </ul>
@@ -113,7 +121,7 @@
                             <i class="icofont-user-alt-3 fs-5"></i> <span>Customers</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_cust">
+                        <ul class="sub-menu collapse<?php echo e($isCustomerMenu ? ' show' : ''); ?>" id="menu-product_cust">
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.customers.view')); ?>">Customer
                                     Profile</a></li>
                             <li><a class="ms-link"
@@ -128,7 +136,7 @@
                             <i class="icofont-credit-card fs-5"></i> <span>Payments</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_pay">
+                        <ul class="sub-menu collapse<?php echo e($isPaymentMenu ? ' show' : ''); ?>" id="menu-product_pay">
                             <li><a class="ms-link"
                                     href="<?php echo e(route('admin_panel.admin.payments.payment_management')); ?>">Payments</a>
                             </li>
@@ -141,7 +149,7 @@
                             <i class="icofont-shield  fs-5"></i> <span>Permission</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_per">
+                        <ul class="sub-menu collapse<?php echo e($isPermissionMenu ? ' show' : ''); ?>" id="menu-product_per">
                             
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.role')); ?>">Role</a>
                             </li>
@@ -156,10 +164,25 @@
                             <i class="icofont-clock-time fs-5"></i> <span>History</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_chat">
+                        <ul class="sub-menu collapse<?php echo e($isHistoryMenu ? ' show' : ''); ?>" id="menu-product_chat">
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.chatlogs.logs')); ?>">Chat
                                     History</a></li>
                             
+                        </ul>
+                    </li>
+                    <li class="collapsed">
+                        <a class="m-link" data-bs-toggle="collapse" data-bs-target="#menu-product_call"
+                            href="#">
+                            <i class="icofont-phone fs-5"></i> <span>Calling CRM</span> <span
+                                class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
+                        <!-- Menu: Sub menu ul -->
+                        <ul class="sub-menu collapse<?php echo e($isCallingCrmMenu ? ' show' : ''); ?>" id="menu-product_call">
+                            <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.callingcrm.dashboard')); ?>">Dashboard</a></li>
+                            <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.callingcrm.contact')); ?>">Contact</a></li>
+                            <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.callingcrm.pipeline')); ?>">Pipeline</a></li>
+                            <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.callingcrm.report')); ?>">Report</a></li>
+                            <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.callingcrm.trends')); ?>">Trends</a></li>
+                            <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.callingcrm.settings')); ?>">Settings</a></li>
                         </ul>
                     </li>
                     <li class="collapsed">
@@ -168,7 +191,7 @@
                             <i class="icofont-cart fs-5"></i> <span>Orders</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_order">
+                        <ul class="sub-menu collapse<?php echo e($isOrderMenu ? ' show' : ''); ?>" id="menu-product_order">
                             <li><a class="ms-link" href="<?php echo e(route('orders.index')); ?>">All Orders</a></li>
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.orders.order_details')); ?>">Order
                                     Details</a></li>
@@ -177,14 +200,13 @@
                     </li>
 
 
-                    </li>
                     <li class="collapsed">
                         <a class="m-link" data-bs-toggle="collapse" data-bs-target="#menu-product_sto"
                             href="#">
                             <i class="icofont-box fs-5"></i> <span>Stock</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_sto">
+                        <ul class="sub-menu collapse<?php echo e($isStockMenu ? ' show' : ''); ?>" id="menu-product_sto">
                             
                             <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.stocks.index')); ?>">Add/Update
                                     Stock</a></li>
@@ -195,7 +217,6 @@
                     <li><a class="m-link active" href="<?php echo e(route('admin_panel.admin.edit.profile')); ?>"><i
                                 class="icofont-home fs-5"></i> <span>Profile</span></a></li>
                     
-                    <!-- Menu: menu collepce btn -->
                     <button type="button" class="btn btn-link sidebar-mini-btn text-light">
                         <span class="ms-2"><i class="icofont-bubble-right"></i></span>
                     </button>
@@ -268,10 +289,6 @@
                             data-bs-toggle="collapse" data-bs-target="#mainHeader">
                             <span class="fa fa-bars"></span>
                         </button>
-
-                        <!-- main menu Search-->
-                        
-
                     </div>
                 </nav>
             </div>
@@ -282,9 +299,6 @@
 
 
                     <?php echo $__env->yieldContent('main-content'); ?>
-
-
-                    <!-- Modal Custom Settings-->
 
 
                 </div>
@@ -301,51 +315,111 @@
             <!-- Jquery Page Js -->
             <script src="<?php echo e(asset('assets/js/template.js')); ?>"></script>
             <script src="<?php echo e(asset('assets/js/page/index.js')); ?>"></script>
-            <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB1Jr7axGGkwvHRnNfoOzoVRFV3yOPHJEU&amp;callback=myMap">
+            
+            <?php if(request()->routeIs('admin_panel.admin.index')): ?>
+            <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB1Jr7axGGkwvHRnNfoOzoVRFV3yOPHJEU&amp;callback=myMap" defer></script>
+            <?php endif; ?>
+
+            <script>
+                if ($('#myDataTable').length) {
+                    $('#myDataTable')
+                        .addClass('nowrap')
+                        .dataTable({
+                            columnDefs: [{
+                                targets: [-1, -3],
+                                className: 'dt-body-right'
+                            }]
+                        });
+                }
+                if ($('#servicesDataTable').length) {
+                    $('#servicesDataTable')
+                        .addClass('nowrap')
+                        .dataTable({
+                            columnDefs: [{
+                                targets: [-1, -3],
+                                className: 'dt-body-right'
+                            }]
+                        });
+                }
+                if ($('#offerDataTable').length) {
+                    $('#offerDataTable')
+                        .addClass('nowrap')
+                        .dataTable({
+                            columnDefs: [{
+                                targets: [-1, -3],
+                                className: 'dt-body-right'
+                            }]
+                        });
+                }
+                if ($('#testonomailsDataTable').length) {
+                    $('#testonomailsDataTable')
+                        .addClass('nowrap')
+                        .dataTable({
+                            columnDefs: [{
+                                targets: [-1, -3],
+                                className: 'dt-body-right'
+                            }]
+                        });
+                }
             </script>
             <script>
-                $('#myDataTable')
-                    .addClass('nowrap')
-                    .dataTable({
-                        columnDefs: [{
-                            targets: [-1, -3],
-                            className: 'dt-body-right'
-                        }]
+                window.CallingCrmApi = {
+                    baseUrl: "<?php echo e(url('/api/calling-crm')); ?>",
+                    csrfToken: "<?php echo e(csrf_token()); ?>",
+                    currentUserId: <?php echo json_encode(auth('admin')->check() ? null : optional(auth()->user())->id, 15, 512) ?>,
+                    endpoints: {
+                        bootstrap: "<?php echo e(url('/api/calling-crm/settings/bootstrap')); ?>",
+                        profile: "<?php echo e(url('/api/calling-crm/settings/profile')); ?>",
+                        pipelines: "<?php echo e(url('/api/calling-crm/pipelines')); ?>",
+                        campaigns: "<?php echo e(url('/api/calling-crm/campaigns')); ?>",
+                        leads: "<?php echo e(url('/api/calling-crm/leads')); ?>",
+                        calls: "<?php echo e(url('/api/calling-crm/calls')); ?>",
+                        dispositions: "<?php echo e(url('/api/calling-crm/dispositions')); ?>",
+                        followUps: "<?php echo e(url('/api/calling-crm/follow-ups')); ?>",
+                        imports: "<?php echo e(url('/api/calling-crm/imports')); ?>",
+                        reports: "<?php echo e(url('/api/calling-crm/reports')); ?>",
+                        dashboard: "<?php echo e(url('/api/calling-crm/dashboard')); ?>",
+                        trends: "<?php echo e(url('/api/calling-crm/trends')); ?>"
+                    }
+                };
+                window.callingCrmRequest = function (path, options) {
+                    const url = path.indexOf('http') === 0
+                        ? path
+                        : window.CallingCrmApi.baseUrl + '/' + path.replace(/^\/+/, '');
+                    const requestOptions = Object.assign({
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': window.CallingCrmApi.csrfToken
+                        }
+                    }, options || {});
+
+                    if (requestOptions.body && typeof requestOptions.body !== 'string' && !(requestOptions.body instanceof FormData)) {
+                        requestOptions.body = JSON.stringify(requestOptions.body);
+                    }
+
+                    if (requestOptions.body instanceof FormData) {
+                        delete requestOptions.headers['Content-Type'];
+                    }
+
+                    return fetch(url, requestOptions).then(async function (response) {
+                        const payload = await response.json().catch(function () { return null; });
+                        if (!response.ok) {
+                            const error = new Error(payload?.message || 'Calling CRM request failed');
+                            error.response = response;
+                            error.payload = payload;
+                            throw error;
+                        }
+                        return payload;
                     });
+                };
             </script>
-            <script>
-                $('#servicesDataTable')
-                    .addClass('nowrap')
-                    .dataTable({
-                        columnDefs: [{
-                            targets: [-1, -3],
-                            className: 'dt-body-right'
-                        }]
-                    });
-            </script>
-            <script>
-                $('#offerDataTable')
-                    .addClass('nowrap')
-                    .dataTable({
-                        columnDefs: [{
-                            targets: [-1, -3],
-                            className: 'dt-body-right'
-                        }]
-                    });
-            </script>
-            <script>
-                $('#testonomailsDataTable')
-                    .addClass('nowrap')
-                    .dataTable({
-                        columnDefs: [{
-                            targets: [-1, -3],
-                            className: 'dt-body-right'
-                        }]
-                    });
-            </script>
+            <?php if(request()->routeIs('admin_panel.admin.callingcrm.*')): ?>
+                <?php echo $__env->make('admin_panel.callingcrm.partials.api-bindings', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+            <?php endif; ?>
+
+            <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
-
-<?php echo $__env->yieldPushContent('scripts'); ?>
-
 </html>
 <?php /**PATH E:\website-project\Amplchat\CMS\resources\views/admin_panel/layout/app.blade.php ENDPATH**/ ?>

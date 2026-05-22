@@ -24,27 +24,29 @@ Route::post('/order', [OrderController::class, 'store'])->name('shop.order');
 Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 // Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
 
-Route::view('/', 'welcome');
-
 // chatsystem routes
 // 🟩 User Dashboard
 Route::get('/dashboard', function () {
     $user = Auth::user(); // current logged-in user
 
     if ($user->role === 'subadmin') {
-        // Subadmin sees all other users
-        $users = User::where('id', '!=', $user->id)->get();
+        // Subadmin sees other users (limit to 100 and select only required fields)
+        $users = User::where('id', '!=', $user->id)
+            ->select(['id', 'name', 'email'])
+            ->take(100)
+            ->get();
     } elseif ($user->role === 'agent') {
-        // Agent sees all customers assigned to them
+        // Agent sees customers assigned to them (limit to 100 and select only required fields)
         $users = AgentCustomerAssignment::where('agent_id', $user->id)
-            ->with('customer')
+            ->with('customer:id,name,email')
+            ->take(100)
             ->get()
             ->pluck('customer'); // extract customer models only
 
     } elseif ($user->role === 'customer') {
         // Customer sees only their assigned agent
         $assignment = AgentCustomerAssignment::where('customer_id', $user->id)
-            ->with('agent')
+            ->with('agent:id,name,email')
             ->first();
         $users = collect();
         if ($assignment && $assignment->agent) {
@@ -61,8 +63,10 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Admin Login (no /admin prefix)
-Route::middleware('guest')->group(function () {
+Route::middleware('guest:admin')->group(function () {
     Route::get('/', [AdminAuthController::class, 'showLoginForm'])->name('admin_panel.admin.login');
+    Route::get('/login', [AdminAuthController::class, 'showLoginForm'])->name('login');
+    Route::get('/admin', [AdminAuthController::class, 'showLoginForm']);
     Route::post('/login', [AdminAuthController::class, 'login'])->name('admin_panel.admin.login.submit');
 });
 
@@ -102,6 +106,34 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
     //order route
     Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
 
+    // Calling CRM
+    Route::get('/calling-crm', function () {
+        return view('admin_panel.callingcrm.dashboard');
+    })->name('callingcrm.dashboard');
+    Route::get('/calling-crm/contact', function () {
+        return view('admin_panel.callingcrm.contact');
+    })->name('callingcrm.contact');
+    Route::get('/calling-crm/contact/properties', function () {
+        return view('admin_panel.callingcrm.contact-properties');
+    })->name('callingcrm.contact.properties');
+    Route::get('/calling-crm/pipeline', function () {
+        return view('admin_panel.callingcrm.pipeline');
+    })->name('callingcrm.pipeline');
+    Route::get('/calling-crm/report', function () {
+        return view('admin_panel.callingcrm.report');
+    })->name('callingcrm.report');
+    Route::get('/calling-crm/report/user', function () {
+        return view('admin_panel.callingcrm.user-report');
+    })->name('callingcrm.report.user');
+    Route::get('/calling-crm/report/login', function () {
+        return view('admin_panel.callingcrm.login-report');
+    })->name('callingcrm.report.login');
+    Route::get('/calling-crm/trends', function () {
+        return view('admin_panel.callingcrm.trends');
+    })->name('callingcrm.trends');
+    Route::get('/calling-crm/settings', function () {
+        return view('admin_panel.callingcrm.settings');
+    })->name('callingcrm.settings');
 
 
     //kyc maneus

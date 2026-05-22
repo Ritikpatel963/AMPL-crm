@@ -122,6 +122,11 @@
                 {{ session('error') }}
             </div>
         @endif
+        @error('email')
+            <div class="admin-error-message">
+                {{ $message }}
+            </div>
+        @enderror
 
         <form method="POST" action="{{ route('admin_panel.admin.login.submit') }}">
             @csrf

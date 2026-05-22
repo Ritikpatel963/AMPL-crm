@@ -13,8 +13,8 @@
         "laravel/tinker": "^2.9",
         "livewire/livewire": "^3.4",
         "livewire/volt": "^1.0",
-        "spatie/laravel-permission": "^6.23",
-        "taylanunutmaz/agora-token-builder": "^1.1"
+        "phpoffice/phpspreadsheet": "*",
+        "spatie/laravel-permission": "^6.23"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.16",

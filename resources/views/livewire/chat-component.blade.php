@@ -25,18 +25,8 @@
                 </div>
             </div>
 
-            <!-- Right Section: Call + 3 Dots -->
+            <!-- Right Section: 3 Dots -->
             <div style="display:flex;align-items:center;gap:14px;">
-                <!-- Call Icon -->
-                <a href="#" title="Call" style="color:#cfe2ff;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
-                        fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path
-                            d="M2.25 6.75c0-.621.504-1.125 1.125-1.125h2.25a1.125 1.125 0 0 1 1.125.99c.06.45.18.888.345 1.308a1.125 1.125 0 0 1-.255 1.26L6.78 10.18a16.5 16.5 0 0 0 6.615 6.615l1.005-1.005a1.125 1.125 0 0 1 1.26-.255c.42.165.858.285 1.308.345a1.125 1.125 0 0 1 .99 1.125v2.25c0 .621-.504 1.125-1.125 1.125H6.75A4.5 4.5 0 0 1 2.25 17.25V6.75z" />
-                    </svg>
-                </a>
-
                 <!-- 3 Dots -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
                     style="color:#cfe2ff;">

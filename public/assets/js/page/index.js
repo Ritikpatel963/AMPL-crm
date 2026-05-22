@@ -58,8 +58,7 @@ $(function() {
             }
         };
 
-        var chart = new ApexCharts(document.querySelector("#topselling"), options);
-        chart.render();
+        var el = document.querySelector("#topselling"); if(el) { var chart = new ApexCharts(el, options); chart.render(); }
     });
     
     $(document).ready(function() {
@@ -134,8 +133,7 @@ $(function() {
             },
         };
 
-        var chart = new ApexCharts(document.querySelector("#apex-GenderOverview"), options);
-        chart.render();
+        var el = document.querySelector("#apex-GenderOverview"); if(el) { var chart = new ApexCharts(el, options); chart.render(); }
 
     });
 
@@ -180,8 +178,7 @@ $(function() {
             }
         };
 
-        var chart = new ApexCharts(document.querySelector("#apex-shoppingstatus"), options);
-        chart.render();
+        var el = document.querySelector("#apex-shoppingstatus"); if(el) { var chart = new ApexCharts(el, options); chart.render(); }
     });
 
     $(document).ready(function() {
@@ -246,8 +243,7 @@ $(function() {
             }
         };
 
-        var chart = new ApexCharts(document.querySelector("#apex-expense"), options);
-        chart.render();
+        var el = document.querySelector("#apex-expense"); if(el) { var chart = new ApexCharts(el, options); chart.render(); }
     });
 
 });

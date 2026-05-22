@@ -19,7 +19,7 @@ class ChatComponent extends Component
 
     public function render()
     {
-        $products = Product::all(); // or ->take(10)
+        $products = Product::query()->orderBy('name')->take(20)->get();
         return view('livewire.chat-component', [
             'products' => $products,
         ]);
@@ -30,21 +30,25 @@ class ChatComponent extends Component
         $this->sender_id = auth()->user()->id;
         $this->receiver_id = $user_id;
 
-        $messages = Message::where(function ($query) {
-            $query->where('sender_id', $this->sender_id)
-                ->where('receiver_id', $this->receiver_id);
-        })->orWhere(function ($query) {
-            $query->where('sender_id', $this->receiver_id)
-                ->where('receiver_id', $this->sender_id);
-        })
-            ->with('sender:id,name', 'receiver:id,name')
-            ->get();
+        $messages = Message::query()
+            ->where(function ($query) {
+                $query->where('sender_id', $this->sender_id)
+                    ->where('receiver_id', $this->receiver_id);
+            })->orWhere(function ($query) {
+                $query->where('sender_id', $this->receiver_id)
+                    ->where('receiver_id', $this->sender_id);
+            })
+            ->with(['sender:id,name', 'receiver:id,name'])
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->reverse();
 
         foreach ($messages as $message) {
             $this->appendChatMessage($message);
         }
 
-        $this->user = User::whereId($user_id)->first();
+        $this->user = User::query()->select(['id', 'name', 'email'])->whereKey($user_id)->first();
     }
 
     public function sendMessage()
@@ -54,6 +58,8 @@ class ChatComponent extends Component
         $chatMessage->receiver_id = $this->receiver_id;
         $chatMessage->message = $this->message;
         $chatMessage->save();
+
+        $chatMessage->load(['sender:id,name', 'receiver:id,name']);
 
         $this->appendChatMessage($chatMessage);
         broadcast(new MessageSendEvent($chatMessage))->toOthers();
@@ -79,6 +85,8 @@ class ChatComponent extends Component
             ];
             $chatMessage->message = $product->name; // no plain text needed
             $chatMessage->save();
+
+            $chatMessage->load(['sender:id,name', 'receiver:id,name']);
 
             $this->appendChatMessage($chatMessage);
 

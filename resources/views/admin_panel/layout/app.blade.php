@@ -15,18 +15,12 @@
         integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
     <!-- Project CSS -->
     <link rel="stylesheet" href="{{ asset('assets/css/ebazar.style.min.css') }}?v=1.0">
 
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
-
-    <!-- jQuery (required by DataTables) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 </head>
 
 <body>
@@ -42,6 +36,20 @@
                     <span class="logo-text">Admin Panel</span>
                 </a>
                 <!-- Menu: main ul -->
+                @php
+                    $isUserMenu = request()->routeIs('admin_panel.admin.users.*');
+                    $isVendorMenu = request()->routeIs('admin_panel.admin.vendors.*') || request()->routeIs('admin_panel.admin.vendor_categories.*');
+                    $isKycMenu = request()->routeIs('admin_panel.admin.kyc.*');
+                    $isProductMenu = request()->routeIs('admin_panel.admin.products.*') || request()->routeIs('admin_panel.admin.categories.*');
+                    $isShippingMenu = request()->routeIs('admin_panel.admin.shipping.*');
+                    $isCustomerMenu = request()->routeIs('admin_panel.admin.customers.*');
+                    $isPaymentMenu = request()->routeIs('admin_panel.admin.payments.*');
+                    $isPermissionMenu = request()->routeIs('admin_panel.admin.role') || request()->routeIs('admin_panel.admin.permissions.*');
+                    $isHistoryMenu = request()->routeIs('admin_panel.admin.chatlogs.*');
+                    $isOrderMenu = request()->routeIs('admin_panel.admin.orders.*') || request()->routeIs('orders.*');
+                    $isStockMenu = request()->routeIs('admin_panel.admin.stocks.*') || request()->routeIs('admin_panel.admin.stock.*');
+                    $isCallingCrmMenu = request()->routeIs('admin_panel.admin.callingcrm.*');
+                @endphp
                 <ul class="menu-list flex-grow-1 mt-3">
                     <li><a class="m-link active" href="{{ route('admin_panel.admin.index') }}"><i
                                 class="icofont-home fs-5"></i> <span>Dashboard</span></a></li>
@@ -51,7 +59,7 @@
                                 <i class="icofont-users-alt-2 fs-5"></i> <span>User Management</span> <span
                                     class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                             <!-- Menu: Sub menu ul -->
-                            <ul class="sub-menu collapse" id="menu-product_user">
+                            <ul class="sub-menu collapse{{ $isUserMenu ? ' show' : '' }}" id="menu-product_user">
                                 <li><a class="ms-link" href="{{ route('admin_panel.admin.users.index') }}">Users</a></li>
                             </ul>
                         </li>
@@ -61,7 +69,7 @@
                             <i class="icofont-users fs-5"></i> <span>Vendor Management</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-vendor">
+                        <ul class="sub-menu collapse{{ $isVendorMenu ? ' show' : '' }}" id="menu-vendor">
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.vendors.index') }}">All Vendors</a></li>
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.vendor_categories.index') }}">Vendor Categories</a></li>
                         </ul>
@@ -71,7 +79,7 @@
                             <i class="icofont-file-alt fs-5"></i> <span>Kyc Management</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_kyc">
+                        <ul class="sub-menu collapse{{ $isKycMenu ? ' show' : '' }}" id="menu-product_kyc">
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.kyc.pending') }}">Pending Kyc</a>
                             </li>
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.kyc.approved') }}">Approved Kyc</a>
@@ -86,7 +94,7 @@
                             <i class="icofont-box  fs-5"></i> <span>Product Management</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_p">
+                        <ul class="sub-menu collapse{{ $isProductMenu ? ' show' : '' }}" id="menu-product_p">
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.products.index') }}">Products
                                     List</a>
                             </li>
@@ -103,7 +111,7 @@
                             <i class="icofont-truck-loaded fs-5"></i> <span>Shipping</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_ship">
+                        <ul class="sub-menu collapse{{ $isShippingMenu ? ' show' : '' }}" id="menu-product_ship">
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.shipping.index') }}">Shipping</a>
                                 {{-- <li><a class="ms-link" href="add-service.php">Add Service</a></li> --}}
                         </ul>
@@ -113,7 +121,7 @@
                             <i class="icofont-user-alt-3 fs-5"></i> <span>Customers</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_cust">
+                        <ul class="sub-menu collapse{{ $isCustomerMenu ? ' show' : '' }}" id="menu-product_cust">
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.customers.view') }}">Customer
                                     Profile</a></li>
                             <li><a class="ms-link"
@@ -128,7 +136,7 @@
                             <i class="icofont-credit-card fs-5"></i> <span>Payments</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_pay">
+                        <ul class="sub-menu collapse{{ $isPaymentMenu ? ' show' : '' }}" id="menu-product_pay">
                             <li><a class="ms-link"
                                     href="{{ route('admin_panel.admin.payments.payment_management') }}">Payments</a>
                             </li>
@@ -141,7 +149,7 @@
                             <i class="icofont-shield  fs-5"></i> <span>Permission</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_per">
+                        <ul class="sub-menu collapse{{ $isPermissionMenu ? ' show' : '' }}" id="menu-product_per">
                             {{-- <li><a class="ms-link" href="{{ route('admin_panel.admin.permission.assign') }}">Permissions</a></li> --}}
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.role') }}">Role</a>
                             </li>
@@ -156,10 +164,25 @@
                             <i class="icofont-clock-time fs-5"></i> <span>History</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_chat">
+                        <ul class="sub-menu collapse{{ $isHistoryMenu ? ' show' : '' }}" id="menu-product_chat">
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.chatlogs.logs') }}">Chat
                                     History</a></li>
                             {{-- <li><a class="ms-link" href="add-service.php">Add Service</a></li> --}}
+                        </ul>
+                    </li>
+                    <li class="collapsed">
+                        <a class="m-link" data-bs-toggle="collapse" data-bs-target="#menu-product_call"
+                            href="#">
+                            <i class="icofont-phone fs-5"></i> <span>Calling CRM</span> <span
+                                class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
+                        <!-- Menu: Sub menu ul -->
+                        <ul class="sub-menu collapse{{ $isCallingCrmMenu ? ' show' : '' }}" id="menu-product_call">
+                            <li><a class="ms-link" href="{{ route('admin_panel.admin.callingcrm.dashboard') }}">Dashboard</a></li>
+                            <li><a class="ms-link" href="{{ route('admin_panel.admin.callingcrm.contact') }}">Contact</a></li>
+                            <li><a class="ms-link" href="{{ route('admin_panel.admin.callingcrm.pipeline') }}">Pipeline</a></li>
+                            <li><a class="ms-link" href="{{ route('admin_panel.admin.callingcrm.report') }}">Report</a></li>
+                            <li><a class="ms-link" href="{{ route('admin_panel.admin.callingcrm.trends') }}">Trends</a></li>
+                            <li><a class="ms-link" href="{{ route('admin_panel.admin.callingcrm.settings') }}">Settings</a></li>
                         </ul>
                     </li>
                     <li class="collapsed">
@@ -168,7 +191,7 @@
                             <i class="icofont-cart fs-5"></i> <span>Orders</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_order">
+                        <ul class="sub-menu collapse{{ $isOrderMenu ? ' show' : '' }}" id="menu-product_order">
                             <li><a class="ms-link" href="{{ route('orders.index') }}">All Orders</a></li>
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.orders.order_details') }}">Order
                                     Details</a></li>
@@ -177,14 +200,13 @@
                     </li>
 
 
-                    </li>
                     <li class="collapsed">
                         <a class="m-link" data-bs-toggle="collapse" data-bs-target="#menu-product_sto"
                             href="#">
                             <i class="icofont-box fs-5"></i> <span>Stock</span> <span
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
-                        <ul class="sub-menu collapse" id="menu-product_sto">
+                        <ul class="sub-menu collapse{{ $isStockMenu ? ' show' : '' }}" id="menu-product_sto">
                             {{-- <li><a class="ms-link" href="{{ route('admin_panel.admin.stock.stock-list') }}">Stock
                                     List</a></li> --}}
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.stocks.index') }}">Add/Update
@@ -196,32 +218,7 @@
 
                     <li><a class="m-link active" href="{{ route('admin_panel.admin.edit.profile') }}"><i
                                 class="icofont-home fs-5"></i> <span>Profile</span></a></li>
-                    {{--
-                     <li class="collapsed">
-                        <a class="m-link" data-bs-toggle="collapse" data-bs-target="#categories" href="{{ route('admin.edit.profile') }}">
-                            <i class="icofont-chart-flow fs-5"></i> <span>Profile</span> <span class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
-                            <!-- Menu: Sub menu ul -->
-                             <ul class="sub-menu collapse" id="categories">
-                                <li><a class="ms-link" href="testimonial.php">Testimonial Add</a></li>
-                                <li><a class="ms-link" href="testimonial-list.php">Testimonial List</a></li>
-                            </ul>
-                    </li>
                     
-                    <li><a class="m-link" href="contactpage.php"><i class="icofont-focus fs-5"></i> <span>Contact Page</span></a></li>
-                    <li><a class="m-link" href="website-info.php"><i class="icofont-comment fs-5"></i> <span>Header - Footer</span></a></li>
-                    <li class="collapsed">
-                        <a class="m-link" data-bs-toggle="collapse" data-bs-target="#product" href="#">
-                            <i class="fa fa-shopping-bag" aria-hidden="true"></i> <span>Product</span> <span class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
-                            <!-- Menu: Sub menu ul -->
-                            <ul class="sub-menu collapse" id="product">
-                                <li><a class="ms-link" href="product-add.php">Product Add</a></li>
-                                <li><a class="ms-link" href="product-list.php">Product List</a></li>
-                            </ul>
-                    </li>
-                     <li><a class="m-link" href=""><i class="fa fa-dollar fa-lg"></i> <span>Order</span></a></li>
-                     <li><a class="m-link" href="gallery.php"><i class="icofont-photobucket fs-5"></i> <span>Gallery</span></a></li>
-                     <li><a class="m-link" href="offer.php"><i class="icofont-notepad fs-5"></i> <span>Offers</span></a></li> --}}
-                    <!-- Menu: menu collepce btn -->
                     <button type="button" class="btn btn-link sidebar-mini-btn text-light">
                         <span class="ms-2"><i class="icofont-bubble-right"></i></span>
                     </button>
@@ -294,17 +291,6 @@
                             data-bs-toggle="collapse" data-bs-target="#mainHeader">
                             <span class="fa fa-bars"></span>
                         </button>
-
-                        <!-- main menu Search-->
-                        {{-- <div class="order-0 col-lg-4 col-md-4 col-sm-12 col-12 mb-3 mb-md-0 ">
-                            <div class="input-group flex-nowrap input-group-lg">
-                                <input type="search" class="form-control" placeholder="Search" aria-label="search"
-                                    aria-describedby="addon-wrapping">
-                                <button type="button" class="input-group-text" id="addon-wrapping"><i
-                                        class="fa fa-search"></i></button>
-                            </div>
-                        </div> --}}
-
                     </div>
                 </nav>
             </div>
@@ -315,9 +301,6 @@
 
 
                     @yield('main-content')
-
-
-                    <!-- Modal Custom Settings-->
 
 
                 </div>
@@ -334,50 +317,110 @@
             <!-- Jquery Page Js -->
             <script src="{{ asset('assets/js/template.js') }}"></script>
             <script src="{{ asset('assets/js/page/index.js') }}"></script>
-            <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB1Jr7axGGkwvHRnNfoOzoVRFV3yOPHJEU&amp;callback=myMap">
+            
+            @if (request()->routeIs('admin_panel.admin.index'))
+            <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB1Jr7axGGkwvHRnNfoOzoVRFV3yOPHJEU&amp;callback=myMap" defer></script>
+            @endif
+
+            <script>
+                if ($('#myDataTable').length) {
+                    $('#myDataTable')
+                        .addClass('nowrap')
+                        .dataTable({
+                            columnDefs: [{
+                                targets: [-1, -3],
+                                className: 'dt-body-right'
+                            }]
+                        });
+                }
+                if ($('#servicesDataTable').length) {
+                    $('#servicesDataTable')
+                        .addClass('nowrap')
+                        .dataTable({
+                            columnDefs: [{
+                                targets: [-1, -3],
+                                className: 'dt-body-right'
+                            }]
+                        });
+                }
+                if ($('#offerDataTable').length) {
+                    $('#offerDataTable')
+                        .addClass('nowrap')
+                        .dataTable({
+                            columnDefs: [{
+                                targets: [-1, -3],
+                                className: 'dt-body-right'
+                            }]
+                        });
+                }
+                if ($('#testonomailsDataTable').length) {
+                    $('#testonomailsDataTable')
+                        .addClass('nowrap')
+                        .dataTable({
+                            columnDefs: [{
+                                targets: [-1, -3],
+                                className: 'dt-body-right'
+                            }]
+                        });
+                }
             </script>
             <script>
-                $('#myDataTable')
-                    .addClass('nowrap')
-                    .dataTable({
-                        columnDefs: [{
-                            targets: [-1, -3],
-                            className: 'dt-body-right'
-                        }]
+                window.CallingCrmApi = {
+                    baseUrl: "{{ url('/api/calling-crm') }}",
+                    csrfToken: "{{ csrf_token() }}",
+                    currentUserId: @json(auth('admin')->check() ? null : optional(auth()->user())->id),
+                    endpoints: {
+                        bootstrap: "{{ url('/api/calling-crm/settings/bootstrap') }}",
+                        profile: "{{ url('/api/calling-crm/settings/profile') }}",
+                        pipelines: "{{ url('/api/calling-crm/pipelines') }}",
+                        campaigns: "{{ url('/api/calling-crm/campaigns') }}",
+                        leads: "{{ url('/api/calling-crm/leads') }}",
+                        calls: "{{ url('/api/calling-crm/calls') }}",
+                        dispositions: "{{ url('/api/calling-crm/dispositions') }}",
+                        followUps: "{{ url('/api/calling-crm/follow-ups') }}",
+                        imports: "{{ url('/api/calling-crm/imports') }}",
+                        reports: "{{ url('/api/calling-crm/reports') }}",
+                        dashboard: "{{ url('/api/calling-crm/dashboard') }}",
+                        trends: "{{ url('/api/calling-crm/trends') }}"
+                    }
+                };
+                window.callingCrmRequest = function (path, options) {
+                    const url = path.indexOf('http') === 0
+                        ? path
+                        : window.CallingCrmApi.baseUrl + '/' + path.replace(/^\/+/, '');
+                    const requestOptions = Object.assign({
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': window.CallingCrmApi.csrfToken
+                        }
+                    }, options || {});
+
+                    if (requestOptions.body && typeof requestOptions.body !== 'string' && !(requestOptions.body instanceof FormData)) {
+                        requestOptions.body = JSON.stringify(requestOptions.body);
+                    }
+
+                    if (requestOptions.body instanceof FormData) {
+                        delete requestOptions.headers['Content-Type'];
+                    }
+
+                    return fetch(url, requestOptions).then(async function (response) {
+                        const payload = await response.json().catch(function () { return null; });
+                        if (!response.ok) {
+                            const error = new Error(payload?.message || 'Calling CRM request failed');
+                            error.response = response;
+                            error.payload = payload;
+                            throw error;
+                        }
+                        return payload;
                     });
+                };
             </script>
-            <script>
-                $('#servicesDataTable')
-                    .addClass('nowrap')
-                    .dataTable({
-                        columnDefs: [{
-                            targets: [-1, -3],
-                            className: 'dt-body-right'
-                        }]
-                    });
-            </script>
-            <script>
-                $('#offerDataTable')
-                    .addClass('nowrap')
-                    .dataTable({
-                        columnDefs: [{
-                            targets: [-1, -3],
-                            className: 'dt-body-right'
-                        }]
-                    });
-            </script>
-            <script>
-                $('#testonomailsDataTable')
-                    .addClass('nowrap')
-                    .dataTable({
-                        columnDefs: [{
-                            targets: [-1, -3],
-                            className: 'dt-body-right'
-                        }]
-                    });
-            </script>
+            @if (request()->routeIs('admin_panel.admin.callingcrm.*'))
+                @include('admin_panel.callingcrm.partials.api-bindings')
+            @endif
+
+            @stack('scripts')
 </body>
-
-@stack('scripts')
-
 </html>

@@ -17,20 +17,26 @@ class AdminAuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
 
         if (Auth::guard('admin')->attempt($credentials, false)) {
+            $request->session()->regenerate();
+
             $admin = Auth::guard('admin')->user();
 
-            // ✅ Ensure role column is synced with Spatie role
-            if ($admin->role && !$admin->hasRole($admin->role)) {
+            // AdminUser records can carry Spatie roles; legacy Admin records do not.
+            if (isset($admin->role) && method_exists($admin, 'hasRole') && !$admin->hasRole($admin->role)) {
                 $admin->assignRole($admin->role);
             }
 
-            // ✅ Preload permissions into cache (Spatie’s recommended optimization)
-            $admin->getPermissionsViaRoles();
+            if (method_exists($admin, 'getPermissionsViaRoles')) {
+                $admin->getPermissionsViaRoles();
+            }
 
-            return redirect()->route('admin_panel.admin.index');
+            return redirect()->intended(route('admin_panel.admin.index'));
         }
 
         return back()->withErrors(['email' => 'Invalid credentials'])->withInput();

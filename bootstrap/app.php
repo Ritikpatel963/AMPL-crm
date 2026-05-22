@@ -13,6 +13,21 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->redirectGuestsTo(function ($request) {
+            if ($request->is('admin_panel/admin*')) {
+                return route('admin_panel.admin.login');
+            }
+
+            return route('login');
+        });
+
+        $middleware->redirectUsersTo(function ($request) {
+            if (\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
+                return route('admin_panel.admin.index');
+            }
+            return '/dashboard';
+        });
+
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);

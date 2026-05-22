@@ -13,9 +13,9 @@ return new class extends Migration
             $table->foreignId('pipeline_id')->constrained('pipelines')->cascadeOnDelete();
             $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('name');
-            $table->enum('status', ['active', 'paused'])->default('active');
-            $table->enum('distribution', ['on_demand', 'auto_assign'])->default('on_demand');
-            $table->enum('priority', ['low', 'medium', 'high'])->default('medium');
+            $table->enum('status', ['draft', 'active', 'paused', 'completed', 'archived'])->default('active');
+            $table->enum('distribution', ['on_demand', 'equal', 'conditional', 'auto_assign'])->default('on_demand');
+            $table->enum('priority', ['low', 'medium', 'high', 'critical'])->default('medium');
             $table->timestamps();
         });
 

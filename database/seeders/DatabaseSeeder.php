@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\AgentCustomerAssignment;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+
 class DatabaseSeeder extends Seeder
 {
     /**
@@ -16,47 +17,63 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-       User::factory()->create([
-    'name' => 'User One',
-    'email' => 'user1@user.com',
-]);
+        User::updateOrCreate(
+            ['email' => 'user1@user.com'],
+            [
+                'name' => 'User One',
+                'password' => Hash::make('password'),
+            ]
+        );
         
-        User::factory()->create([
-            'name' => 'Admin User',
-            'email' => 'admin@admin.com',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@admin.com'],
+            [
+                'name' => 'Admin User',
+                'password' => Hash::make('password'),
+            ]
+        );
         
-        User::factory()->create([
-            'name' => 'Test',
-            'email' => 'test@test.com',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'test@test.com'],
+            [
+                'name' => 'Test',
+                'password' => Hash::make('password'),
+            ]
+        );
 
-        $subadmin = User::create([
-            'name' => 'Main Admin',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'subadmin',
-        ]);
+        $subadmin = User::updateOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Main Admin',
+                'password' => Hash::make('password'),
+                'role' => 'subadmin',
+            ]
+        );
 
-        $agent = User::create([
-            'name' => 'Agent One',
-            'email' => 'agent1@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'agent',
-        ]);
+        $agent = User::updateOrCreate(
+            ['email' => 'agent1@example.com'],
+            [
+                'name' => 'Agent One',
+                'password' => Hash::make('password'),
+                'role' => 'agent',
+            ]
+        );
 
-        $customer = User::create([
-            'name' => 'Customer One',
-            'email' => 'customer1@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'customer',
-        ]);
+        $customer = User::updateOrCreate(
+            ['email' => 'customer1@example.com'],
+            [
+                'name' => 'Customer One',
+                'password' => Hash::make('password'),
+                'role' => 'customer',
+            ]
+        );
 
-        AgentCustomerAssignment::create([
+        AgentCustomerAssignment::firstOrCreate([
             'agent_id' => $agent->id,
             'customer_id' => $customer->id,
         ]);
 
+        $this->call(CallingCrmSeeder::class);
     }
 }
 

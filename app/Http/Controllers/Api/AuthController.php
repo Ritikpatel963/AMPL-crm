@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\VendorOtp;
 use App\Services\WatiService;
@@ -14,6 +15,50 @@ use App\Services\WatiService;
 class AuthController extends Controller
 {
     public function __construct(private WatiService $wati) {}
+
+    public function agentLogin(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = User::query()
+            ->whereIn('role', ['agent', 'subadmin'])
+            ->where('email', $data['email'])
+            ->first();
+
+        if (! $user || ! Hash::check($data['password'], $user->password)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid agent email or password.',
+            ], 401);
+        }
+
+        if ($user->crm_status !== null && $user->crm_status !== 'active') {
+            return response()->json([
+                'status' => false,
+                'message' => 'This agent account is not active.',
+            ], 403);
+        }
+
+        if ($user->expires_at !== null && now()->startOfDay()->gt($user->expires_at)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This agent account has expired.',
+            ], 403);
+        }
+
+        $token = $user->createToken('android-agent')->plainTextToken;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Agent login successful.',
+            'token' => $token,
+            'user' => $user,
+            'approval_status' => $user->approval_status,
+        ]);
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -366,5 +411,15 @@ class AuthController extends Controller
                 'message' => 'Something went wrong: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()?->currentAccessToken()?->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Logged out successfully.',
+        ]);
     }
 }
