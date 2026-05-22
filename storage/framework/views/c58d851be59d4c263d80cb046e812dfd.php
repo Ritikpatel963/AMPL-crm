@@ -3,8 +3,6 @@
 <link rel="stylesheet" href="<?php echo e(asset('css/crm/calling-crm.css')); ?>">
 <?php $__env->stopPush(); ?>
 
-<?php echo $__env->make('admin_panel.callingcrm.partials.ui-polish', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
-
 <?php $__env->startSection('main-content'); ?>
 <div class="calling-crm-canvas"><main class="main-wrapper">
 
@@ -167,46 +165,7 @@
 <?php $__env->stopSection(); ?>
 
 <?php $__env->startPush('scripts'); ?>
-<script>
-const uploadModal = document.querySelector('[data-upload-modal]');
-const openUploadModal = document.querySelector('[data-upload-open]');
-const closeUploadButtons = document.querySelectorAll('[data-upload-close]');
-const leadModal = document.querySelector('[data-lead-modal]');
-const openLeadModal = document.querySelector('[data-lead-open]');
-const closeLeadButtons = document.querySelectorAll('[data-lead-close]');
-
-function bindContactModal(modal, openButton, closeButtons) {
-  if (modal && openButton) {
-    openButton.addEventListener('click', function () {
-      modal.classList.add('open');
-    });
-  }
-
-  closeButtons.forEach(function (button) {
-    button.addEventListener('click', function () {
-      modal.classList.remove('open');
-    });
-  });
-
-  if (modal) {
-    modal.addEventListener('click', function (event) {
-      if (event.target === modal) {
-        modal.classList.remove('open');
-      }
-    });
-  }
-}
-
-bindContactModal(uploadModal, openUploadModal, closeUploadButtons);
-bindContactModal(leadModal, openLeadModal, closeLeadButtons);
-</script>
-<?php $__env->stopPush(); ?>
-
-
-
-<?php $__env->startPush('scripts'); ?>
-<script src="<?php echo e(asset('js/crm/crm-core.js')); ?>"></script>
-<script type="module" src="<?php echo e(asset('js/crm/leads.js')); ?>"></script>
+<script src="<?php echo e(asset('js/crm/pages/contact.js')); ?>"></script>
 <?php $__env->stopPush(); ?>
 
 <?php echo $__env->make('admin_panel.layout.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH E:\website-project\Amplchat\CMS\resources\views/admin_panel/callingcrm/contact.blade.php ENDPATH**/ ?>

@@ -5,25 +5,12 @@
 <link rel="stylesheet" href="{{ asset('css/crm/calling-crm.css') }}">
 @endpush
 
-@include('admin_panel.callingcrm.partials.ui-polish')
-
 @section('main-content')
-<div class="calling-crm-canvas"><main class="main-wrapper">
+<div class="calling-crm-canvas calling-crm-dashboard"><main class="main-wrapper">
 
   <!-- HEADER -->
-  <div class="page-header">
+  <div class="page-header dashboard-page-header">
     <h1 class="page-title">Dashboard</h1>
-    <div class="header-actions">
-      <div class="badge-btn">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-        Analytics
-      </div>
-      <div class="badge-btn">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-        Alerts
-      </div>
-      <div class="avatar">AS</div>
-    </div>
   </div>
 
   <!-- DASHBOARD GRID -->
@@ -34,7 +21,6 @@
       <div class="card-header">
         <span class="card-title">Call Overview</span>
         <div class="card-actions">
-          <a href="{{ route('admin_panel.admin.callingcrm.report') }}" class="view-report-link">View Report</a>
           <div class="crm-filter" data-filter>
             <button type="button" class="date-filter" data-filter-toggle>
               <span class="crm-filter-label" data-filter-label>Last 7 Days</span>
@@ -58,13 +44,15 @@
         </div>
       </div>
 
+      <div class="call-overview-surface">
+        <a href="{{ route('admin_panel.admin.callingcrm.report') }}" class="view-report-link">View Report</a>
       <div class="donut-container">
         <div class="donut-svg-wrap">
-          <svg class="donut" width="140" height="140" viewBox="0 0 140 140">
-            <circle cx="70" cy="70" r="52" fill="none" stroke="#DDCEF5" stroke-width="26"/>
-            <circle cx="70" cy="70" r="52" fill="none" stroke="#763ABB" stroke-width="26"
+          <svg class="donut" viewBox="0 0 330 190" role="img" aria-label="Connected call percentage">
+            <path d="M61 150 A104 104 0 0 1 269 150" fill="none" stroke="#D8C9F2" stroke-width="48" stroke-linecap="round"/>
+            <path d="M61 150 A104 104 0 0 1 269 150" fill="none" stroke="#763ABB" stroke-width="48"
               stroke-dasharray="0 326.73" stroke-dashoffset="0" data-crm-connected-ring
-              stroke-linecap="round" transform="rotate(-90 70 70)"
+              stroke-linecap="round"
               style="transition: stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1);"/>
           </svg>
           <div class="donut-center">
@@ -90,20 +78,20 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
 
     <!-- AGENT ACTIVITY -->
     <div class="card agent-activity-card">
       <div class="card-header">
         <span class="card-title">Agent Activity</span>
-        <span class="live-pill">Live now</span>
       </div>
       <div class="agent-grid">
         <div class="agent-stat">
           <div class="agent-icon active-icon">
-            <svg width="20" height="20" fill="none" stroke="#763ABB" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <svg fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path d="M13 5.5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/><path d="m10.5 8 1.5 4 3 1"/><path d="m8.5 9-1 5-3 2"/><path d="m12 12-2 3 1 5"/><path d="m7.5 14 4 1"/></svg>
           </div>
-          <div class="agent-label">Active Agents<br><small style="opacity:.7;">Currently on tasks</small></div>
+          <div class="agent-label">Active Agents <span class="agent-help" aria-hidden="true">i</span></div>
           <div class="agent-numbers">
             <span class="agent-num" data-crm-active-agents><span class="skeleton-loader" style="width: 25px; height: 20px;"></span></span>
             <span class="agent-total" data-crm-total-agents>/ <span class="skeleton-loader" style="width: 25px; height: 14px;"></span></span>
@@ -117,7 +105,7 @@
           <div class="agent-icon break-icon">
             <svg width="20" height="20" fill="none" stroke="#F59E0B" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
           </div>
-          <div class="agent-label">On-break Agents<br><small style="opacity:.7;">Currently resting</small></div>
+          <div class="agent-label">On-break Agents <span class="agent-help" aria-hidden="true">i</span></div>
           <div class="agent-numbers">
             <span class="agent-num break" data-crm-break-agents><span class="skeleton-loader" style="width: 25px; height: 20px;"></span></span>
             <span class="agent-total" data-crm-total-agents>/ <span class="skeleton-loader" style="width: 25px; height: 14px;"></span></span>
@@ -465,236 +453,5 @@
 @endsection
 
 @push('scripts')
-<script>
-let activeFilter = null;
-const popoverLayer = document.querySelector('[data-popover-layer]');
-
-document.addEventListener('click', function (event) {
-  document.querySelectorAll('[data-filter].open').forEach(function (filter) {
-    const popover = filter._activePopover;
-    if (!filter.contains(event.target) && !(popover && popover.contains(event.target))) {
-      closeFilter(filter);
-    }
-  });
-});
-
-function closeFilter(filter) {
-  const popover = filter._activePopover || filter.querySelector('.crm-popover');
-  filter.classList.remove('open');
-  if (popover) {
-    popover.style.removeProperty('top');
-    popover.style.removeProperty('left');
-    popover.style.removeProperty('width');
-    if (filter._popoverParent && popover.parentElement !== filter._popoverParent) {
-      filter._popoverParent.appendChild(popover);
-    }
-  }
-  filter._activePopover = null;
-  filter._popoverParent = null;
-  const card = filter.closest('.card');
-  if (card) {
-    card.classList.remove('filter-active');
-  }
-  if (activeFilter === filter) {
-    activeFilter = null;
-  }
-}
-
-function positionFilterPopover(filter) {
-  const button = filter.querySelector('[data-filter-toggle]');
-  const popover = filter._activePopover || filter.querySelector('.crm-popover');
-  if (!button || !popover) {
-    return;
-  }
-
-  const gap = 10;
-  const viewportPadding = 12;
-  const rect = button.getBoundingClientRect();
-  const popoverWidth = Math.min(268, window.innerWidth - viewportPadding * 2);
-  popover.style.width = popoverWidth + 'px';
-
-  let left = rect.right - popoverWidth;
-  if (popover.classList.contains('popover-left')) {
-    left = rect.left;
-  }
-  left = Math.max(viewportPadding, Math.min(left, window.innerWidth - popoverWidth - viewportPadding));
-
-  let top = rect.bottom + gap;
-  const availableBelow = window.innerHeight - top - viewportPadding;
-  const naturalHeight = Math.min(popover.scrollHeight || 0, 420);
-  if (availableBelow < 180 && rect.top > availableBelow) {
-    top = Math.max(viewportPadding, rect.top - naturalHeight - gap);
-  }
-
-  popover.style.left = left + 'px';
-  popover.style.top = top + 'px';
-}
-
-document.querySelectorAll('[data-filter-toggle]').forEach(function (button) {
-  button.addEventListener('click', function (event) {
-    event.stopPropagation();
-    const filter = button.closest('[data-filter]');
-
-    if (filter.classList.contains('open')) {
-      closeFilter(filter);
-      return;
-    }
-
-    document.querySelectorAll('[data-filter].open').forEach(closeFilter);
-
-    const popover = filter.querySelector('.crm-popover');
-    if (popover && popoverLayer) {
-      filter._popoverParent = popover.parentElement;
-      filter._activePopover = popover;
-      popoverLayer.appendChild(popover);
-    }
-
-    filter.classList.add('open');
-    activeFilter = filter;
-    const card = filter.closest('.card');
-    if (card) {
-      card.classList.add('filter-active');
-    }
-    positionFilterPopover(filter);
-  });
-});
-
-document.querySelectorAll('[data-filter-apply]').forEach(function (button) {
-  button.addEventListener('click', function () {
-    const filter = activeFilter;
-    if (!filter) {
-      return;
-    }
-    const label = filter.querySelector('[data-filter-label]');
-    const popover = filter._activePopover || filter.querySelector('.crm-popover');
-    const checkedBoxes = Array.from(popover.querySelectorAll('input[type="checkbox"]:checked'))
-      .map(function (input) { return input.value; })
-      .filter(function (value) { return value !== 'Select all'; });
-    const checkedRadio = popover.querySelector('input[type="radio"]:checked');
-
-    if (checkedBoxes.length) {
-      label.textContent = checkedBoxes.length === 1 ? checkedBoxes[0] : checkedBoxes.length + ' selected';
-    } else if (checkedRadio) {
-      label.textContent = checkedRadio.closest('.crm-choice')?.textContent.trim() || checkedRadio.value;
-    }
-
-    closeFilter(filter);
-  });
-});
-
-window.addEventListener('resize', function () {
-  document.querySelectorAll('[data-filter].open').forEach(positionFilterPopover);
-});
-
-window.addEventListener('scroll', function () {
-  document.querySelectorAll('[data-filter].open').forEach(positionFilterPopover);
-}, true);
-
-document.querySelectorAll('.crm-popover').forEach(function (popover) {
-  popover.addEventListener('click', function (event) {
-    event.stopPropagation();
-  });
-});
-
-document.querySelectorAll('.crm-search').forEach(function (input) {
-  input.addEventListener('input', function () {
-    const query = input.value.trim().toLowerCase();
-    const body = input.closest('.crm-popover-body');
-    body.querySelectorAll('.crm-choice').forEach(function (choice) {
-      choice.style.display = choice.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
-    });
-  });
-});
-
-const campaignSelectAll = document.querySelector('input[value="Select all"]');
-if (campaignSelectAll) {
-  campaignSelectAll.addEventListener('change', function () {
-    const popover = campaignSelectAll.closest('.crm-popover');
-    popover.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
-      checkbox.checked = campaignSelectAll.checked;
-    });
-  });
-}
-
-const pinModal = document.querySelector('[data-pin-modal]');
-const openPinModal = document.querySelector('[data-pin-open]');
-const closePinButtons = document.querySelectorAll('[data-pin-close]');
-const uploadModal = document.querySelector('[data-upload-modal]');
-const openUploadModal = document.querySelector('[data-upload-open]');
-const closeUploadButtons = document.querySelectorAll('[data-upload-close]');
-const campaignModal = document.querySelector('[data-campaign-modal]');
-const openCampaignModal = document.querySelector('[data-campaign-open]');
-const closeCampaignButtons = document.querySelectorAll('[data-campaign-close]');
-
-function bindModal(modal, openButton, closeButtons) {
-  if (modal && openButton) {
-    openButton.addEventListener('click', function () {
-      modal.classList.add('open');
-    });
-  }
-
-  closeButtons.forEach(function (button) {
-    button.addEventListener('click', function () {
-      modal.classList.remove('open');
-    });
-  });
-
-  if (modal) {
-    modal.addEventListener('click', function (event) {
-      if (event.target === modal) {
-        modal.classList.remove('open');
-      }
-    });
-  }
-}
-
-bindModal(uploadModal, openUploadModal, closeUploadButtons);
-bindModal(campaignModal, openCampaignModal, closeCampaignButtons);
-
-if (pinModal && openPinModal) {
-  openPinModal.addEventListener('click', function () {
-    pinModal.classList.add('open');
-  });
-}
-
-closePinButtons.forEach(function (button) {
-  button.addEventListener('click', function () {
-    pinModal.classList.remove('open');
-  });
-});
-
-if (pinModal) {
-  pinModal.addEventListener('click', function (event) {
-    if (event.target === pinModal) {
-      pinModal.classList.remove('open');
-    }
-  });
-}
-
-document.querySelectorAll('.pin-option').forEach(function (option) {
-  option.addEventListener('click', function () {
-    document.querySelectorAll('.pin-option').forEach(function (item) {
-      item.classList.remove('selected');
-    });
-    option.classList.add('selected');
-  });
-});
-
-const pinSearch = document.querySelector('[data-pin-search]');
-if (pinSearch) {
-  pinSearch.addEventListener('input', function () {
-    const query = pinSearch.value.trim().toLowerCase();
-    document.querySelectorAll('.pin-option').forEach(function (option) {
-      option.style.display = option.textContent.toLowerCase().includes(query) ? 'block' : 'none';
-    });
-  });
-}
-</script>
-@endpush
-
-
-
-@push('scripts')
-<script src="{{ asset('js/crm/crm-core.js') }}"></script>
-<script type="module" src="{{ asset('js/crm/campaigns.js') }}"></script>
+<script src="{{ asset('js/crm/pages/dashboard.js') }}"></script>
 @endpush

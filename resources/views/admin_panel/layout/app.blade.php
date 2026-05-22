@@ -364,61 +364,19 @@
                         });
                 }
             </script>
-            <script>
-                window.CallingCrmApi = {
-                    baseUrl: "{{ url('/api/calling-crm') }}",
-                    csrfToken: "{{ csrf_token() }}",
-                    currentUserId: @json(auth('admin')->check() ? null : optional(auth()->user())->id),
-                    endpoints: {
-                        bootstrap: "{{ url('/api/calling-crm/settings/bootstrap') }}",
-                        profile: "{{ url('/api/calling-crm/settings/profile') }}",
-                        pipelines: "{{ url('/api/calling-crm/pipelines') }}",
-                        campaigns: "{{ url('/api/calling-crm/campaigns') }}",
-                        leads: "{{ url('/api/calling-crm/leads') }}",
-                        calls: "{{ url('/api/calling-crm/calls') }}",
-                        dispositions: "{{ url('/api/calling-crm/dispositions') }}",
-                        followUps: "{{ url('/api/calling-crm/follow-ups') }}",
-                        imports: "{{ url('/api/calling-crm/imports') }}",
-                        reports: "{{ url('/api/calling-crm/reports') }}",
-                        dashboard: "{{ url('/api/calling-crm/dashboard') }}",
-                        trends: "{{ url('/api/calling-crm/trends') }}"
-                    }
-                };
-                window.callingCrmRequest = function (path, options) {
-                    const url = path.indexOf('http') === 0
-                        ? path
-                        : window.CallingCrmApi.baseUrl + '/' + path.replace(/^\/+/, '');
-                    const requestOptions = Object.assign({
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': window.CallingCrmApi.csrfToken
-                        }
-                    }, options || {});
-
-                    if (requestOptions.body && typeof requestOptions.body !== 'string' && !(requestOptions.body instanceof FormData)) {
-                        requestOptions.body = JSON.stringify(requestOptions.body);
-                    }
-
-                    if (requestOptions.body instanceof FormData) {
-                        delete requestOptions.headers['Content-Type'];
-                    }
-
-                    return fetch(url, requestOptions).then(async function (response) {
-                        const payload = await response.json().catch(function () { return null; });
-                        if (!response.ok) {
-                            const error = new Error(payload?.message || 'Calling CRM request failed');
-                            error.response = response;
-                            error.payload = payload;
-                            throw error;
-                        }
-                        return payload;
-                    });
-                };
-            </script>
             @if (request()->routeIs('admin_panel.admin.callingcrm.*'))
-                @include('admin_panel.callingcrm.partials.api-bindings')
+                @php
+                    $callingCrmConfig = [
+                        'baseUrl' => url('/api/calling-crm'),
+                        'csrfToken' => csrf_token(),
+                        'currentUserId' => auth('admin')->check() ? null : optional(auth()->user())->id,
+                    ];
+                @endphp
+                <script id="callingCrmConfig" type="application/json">
+                    @json($callingCrmConfig)
+                </script>
+                <script src="{{ asset('js/crm/calling-crm.js') }}"></script>
+                <script src="{{ asset('js/crm/crm-core.js') }}"></script>
             @endif
 
             @stack('scripts')

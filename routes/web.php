@@ -62,12 +62,11 @@ Route::get('/dashboard', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// Admin Login (no /admin prefix)
+// Admin login stays separate from the default user login routes in auth.php.
 Route::middleware('guest:admin')->group(function () {
-    Route::get('/', [AdminAuthController::class, 'showLoginForm'])->name('admin_panel.admin.login');
-    Route::get('/login', [AdminAuthController::class, 'showLoginForm'])->name('login');
-    Route::get('/admin', [AdminAuthController::class, 'showLoginForm']);
-    Route::post('/login', [AdminAuthController::class, 'login'])->name('admin_panel.admin.login.submit');
+    Route::get('/', [AdminAuthController::class, 'showLoginForm']);
+    Route::get('/admin', [AdminAuthController::class, 'showLoginForm'])->name('admin_panel.admin.login');
+    Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin_panel.admin.login.submit');
 });
 
 // Admin protected routes (still under /admin prefix)

@@ -362,61 +362,19 @@
                         });
                 }
             </script>
-            <script>
-                window.CallingCrmApi = {
-                    baseUrl: "<?php echo e(url('/api/calling-crm')); ?>",
-                    csrfToken: "<?php echo e(csrf_token()); ?>",
-                    currentUserId: <?php echo json_encode(auth('admin')->check() ? null : optional(auth()->user())->id, 15, 512) ?>,
-                    endpoints: {
-                        bootstrap: "<?php echo e(url('/api/calling-crm/settings/bootstrap')); ?>",
-                        profile: "<?php echo e(url('/api/calling-crm/settings/profile')); ?>",
-                        pipelines: "<?php echo e(url('/api/calling-crm/pipelines')); ?>",
-                        campaigns: "<?php echo e(url('/api/calling-crm/campaigns')); ?>",
-                        leads: "<?php echo e(url('/api/calling-crm/leads')); ?>",
-                        calls: "<?php echo e(url('/api/calling-crm/calls')); ?>",
-                        dispositions: "<?php echo e(url('/api/calling-crm/dispositions')); ?>",
-                        followUps: "<?php echo e(url('/api/calling-crm/follow-ups')); ?>",
-                        imports: "<?php echo e(url('/api/calling-crm/imports')); ?>",
-                        reports: "<?php echo e(url('/api/calling-crm/reports')); ?>",
-                        dashboard: "<?php echo e(url('/api/calling-crm/dashboard')); ?>",
-                        trends: "<?php echo e(url('/api/calling-crm/trends')); ?>"
-                    }
-                };
-                window.callingCrmRequest = function (path, options) {
-                    const url = path.indexOf('http') === 0
-                        ? path
-                        : window.CallingCrmApi.baseUrl + '/' + path.replace(/^\/+/, '');
-                    const requestOptions = Object.assign({
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': window.CallingCrmApi.csrfToken
-                        }
-                    }, options || {});
-
-                    if (requestOptions.body && typeof requestOptions.body !== 'string' && !(requestOptions.body instanceof FormData)) {
-                        requestOptions.body = JSON.stringify(requestOptions.body);
-                    }
-
-                    if (requestOptions.body instanceof FormData) {
-                        delete requestOptions.headers['Content-Type'];
-                    }
-
-                    return fetch(url, requestOptions).then(async function (response) {
-                        const payload = await response.json().catch(function () { return null; });
-                        if (!response.ok) {
-                            const error = new Error(payload?.message || 'Calling CRM request failed');
-                            error.response = response;
-                            error.payload = payload;
-                            throw error;
-                        }
-                        return payload;
-                    });
-                };
-            </script>
             <?php if(request()->routeIs('admin_panel.admin.callingcrm.*')): ?>
-                <?php echo $__env->make('admin_panel.callingcrm.partials.api-bindings', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+                <?php
+                    $callingCrmConfig = [
+                        'baseUrl' => url('/api/calling-crm'),
+                        'csrfToken' => csrf_token(),
+                        'currentUserId' => auth('admin')->check() ? null : optional(auth()->user())->id,
+                    ];
+                ?>
+                <script id="callingCrmConfig" type="application/json">
+                    <?php echo json_encode($callingCrmConfig, 15, 512) ?>
+                </script>
+                <script src="<?php echo e(asset('js/crm/calling-crm.js')); ?>"></script>
+                <script src="<?php echo e(asset('js/crm/crm-core.js')); ?>"></script>
             <?php endif; ?>
 
             <?php echo $__env->yieldPushContent('scripts'); ?>

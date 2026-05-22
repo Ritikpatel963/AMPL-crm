@@ -5,8 +5,6 @@
 <link rel="stylesheet" href="{{ asset('css/crm/calling-crm.css') }}">
 @endpush
 
-@include('admin_panel.callingcrm.partials.ui-polish')
-
 @section('main-content')
 <div class="login-report-page">
   <div class="login-title-row">
@@ -57,10 +55,3 @@
   </div>
 </div>
 @endsection
-
-
-
-@push('scripts')
-<script src="{{ asset('js/crm/crm-core.js') }}"></script>
-<script type="module" src="{{ asset('js/crm/campaigns.js') }}"></script>
-@endpush

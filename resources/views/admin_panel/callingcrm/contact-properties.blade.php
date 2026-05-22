@@ -5,8 +5,6 @@
 <link rel="stylesheet" href="{{ asset('css/crm/calling-crm.css') }}">
 @endpush
 
-@include('admin_panel.callingcrm.partials.ui-polish')
-
 @section('main-content')
 <div class="ccp-page">
   <div class="ccp-heading">Settings</div>
@@ -117,44 +115,5 @@
 @endsection
 
 @push('scripts')
-<script>
-const propertyModal = document.querySelector('[data-property-modal]');
-const openPropertyModal = document.querySelector('[data-property-open]');
-const closePropertyButtons = document.querySelectorAll('[data-property-close]');
-const propertyNameInput = document.querySelector('.ccp-input');
-const propertyCounter = document.querySelector('.ccp-counter');
-
-if (openPropertyModal && propertyModal) {
-  openPropertyModal.addEventListener('click', function () {
-    propertyModal.classList.add('open');
-  });
-}
-
-closePropertyButtons.forEach(function (button) {
-  button.addEventListener('click', function () {
-    propertyModal.classList.remove('open');
-  });
-});
-
-if (propertyModal) {
-  propertyModal.addEventListener('click', function (event) {
-    if (event.target === propertyModal) {
-      propertyModal.classList.remove('open');
-    }
-  });
-}
-
-if (propertyNameInput && propertyCounter) {
-  propertyNameInput.addEventListener('input', function () {
-    propertyCounter.textContent = propertyNameInput.value.length + '/60';
-  });
-}
-</script>
-@endpush
-
-
-
-@push('scripts')
-<script src="{{ asset('js/crm/crm-core.js') }}"></script>
-<script type="module" src="{{ asset('js/crm/leads.js') }}"></script>
+<script src="{{ asset('js/crm/pages/contact-properties.js') }}"></script>
 @endpush
