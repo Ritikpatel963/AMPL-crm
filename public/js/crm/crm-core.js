@@ -859,29 +859,6 @@
     if (!document.querySelector('.crm-pipeline-app')) {
       return;
     }
-
-    loadCampaigns().then(function (campaigns) {
-      if (!campaigns.length) {
-        document.querySelectorAll('.camp-list').forEach(function (list) {
-          list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--calling-crm-muted); font-size: 13px;">No campaigns found.</div>';
-        });
-        document.querySelectorAll('.group-count').forEach(function (count) {
-          count.textContent = '0';
-        });
-        return;
-      }
-      const rows = campaigns.map(function (campaign) {
-        const priority = campaign.priority === 'high' || campaign.priority === 'critical' ? 'prio-high' : 'prio-medium';
-        const paused = campaign.status === 'paused' || campaign.status === 'draft';
-        return '<div class="camp-item" data-crm-campaign-id="' + campaign.id + '"><div class="prio-dot ' + priority + '"></div><span class="camp-name" data-campaign-name>' + campaign.name + '</span><span class="' + (paused ? 'paused-badge' : 'active-badge') + '">' + (paused ? 'Paused' : 'Active') + '</span><div class="more-btn"><svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14"><circle cx="8" cy="3" r="1.2"/><circle cx="8" cy="8" r="1.2"/><circle cx="8" cy="13" r="1.2"/></svg></div></div>';
-      }).join('');
-      document.querySelectorAll('.camp-list').forEach(function (list) {
-        list.innerHTML = rows;
-      });
-      document.querySelectorAll('.group-count').forEach(function (count) {
-        count.textContent = campaigns.length;
-      });
-    });
   }
 
   function hydrateReportsAndTrends() {
