@@ -143,66 +143,179 @@
   }
 
   function bindContactPage() {
-    const contactPageTitle = document.querySelector('.calling-crm-canvas .page-title');
-    if (!contactPageTitle || contactPageTitle.textContent.trim().toLowerCase() !== 'contact search') {
+    const root = document.querySelector('.contact-search-app');
+    if (!root) {
       return;
     }
 
     let currentPage = 1;
     let perPage = 50;
+    let lastResponse = null;
+    let lastLeads = [];
+    let contactDataTable = null;
+    const activeFilters = {};
     
-    // UI Elements
-    const tbody = document.querySelector('[data-contact-search-body]');
-    const paginationSelect = document.querySelector('[data-contact-per-page]');
-    const paginationInfo = document.querySelector('[data-contact-pagination-info]');
-    const prevBtn = document.querySelector('[data-contact-prev]');
-    const nextBtn = document.querySelector('[data-contact-next]');
+    const formPage = root.querySelector('[data-contact-form-page]');
+    const resultsPage = root.querySelector('[data-contact-results-page]');
+    const searchForm = root.querySelector('[data-contact-search-form]');
+    const campaignSelect = root.querySelector('[data-contact-campaign-select]');
+    const sourceList = root.querySelector('[data-contact-source-list]');
+    const tbody = root.querySelector('[data-contact-search-body]');
+    const paginationSelect = root.querySelector('[data-contact-per-page]');
+    const paginationInfo = root.querySelector('[data-contact-pagination-info]');
+    const prevBtn = root.querySelector('[data-contact-prev]');
+    const nextBtn = root.querySelector('[data-contact-next]');
+    const sourceCount = root.querySelector('[data-source-count]');
+    const selectAll = root.querySelector('[data-contact-select-all]');
     const menuLayer = document.getElementById('contactMenuLayer');
     let currentMenuLeadId = null;
 
-    // Load initial bootstraps
-    Promise.all([loadBootstrap(), loadCampaigns()]).then(function (results) {
-      // hydrate filters if we want to populate them dynamically later
+    function formValue(name) {
+      return searchForm?.querySelector('[name="' + name + '"]')?.value.trim() || '';
+    }
+
+    function selectedSource() {
+      return sourceList?.querySelector('input[name="source"]:checked')?.value || '';
+    }
+
+    function collectFilters() {
+      const searchParts = [formValue('name'), formValue('phone'), formValue('email')].filter(Boolean);
+      activeFilters.search = searchParts.join(' ');
+      activeFilters.campaign_id = campaignSelect?.value || '';
+      activeFilters.source = selectedSource();
+    }
+
+    function showResultsPage() {
+      if (formPage) formPage.hidden = true;
+      if (resultsPage) resultsPage.hidden = false;
+    }
+
+    function showFormPage() {
+      if (resultsPage) resultsPage.hidden = true;
+      if (formPage) formPage.hidden = false;
+    }
+
+    function formatDate(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }).replace(/ /g, '-');
+    }
+
+    function refreshDataTable() {
+      if (!window.jQuery || !jQuery.fn.DataTable) return;
+      const table = jQuery('#contactResultsTable');
+      if (!table.length) return;
+
+      if (contactDataTable) {
+        contactDataTable.destroy();
+        contactDataTable = null;
+      }
+
+      contactDataTable = table.DataTable({
+        paging: false,
+        searching: false,
+        info: false,
+        ordering: true,
+        autoWidth: false,
+        responsive: false,
+        retrieve: false,
+        destroy: true
+      });
+    }
+
+    function updatePagination(responseData, leads) {
+      const total = Number(responseData.total || leads.length || 0);
+      const from = total ? Number(responseData.from || ((currentPage - 1) * perPage + 1)) : 0;
+      const to = total ? Number(responseData.to || (from + leads.length - 1)) : 0;
+      paginationInfo.textContent = from + ' - ' + to + ' of ' + total;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = Boolean(responseData.last_page && currentPage >= responseData.last_page) || !leads.length;
+      if (sourceCount) sourceCount.textContent = activeFilters.source ? '1' : '0';
+    }
+
+    function csvEscape(value) {
+      const text = value == null ? '' : String(value);
+      return '"' + text.replace(/"/g, '""') + '"';
+    }
+
+    function exportCurrentPage() {
+      if (!lastLeads.length) {
+        toast('No contacts available to export.', 'error');
+        return;
+      }
+
+      const headers = ['Name', 'Number', 'Campaign', 'Pipeline', 'Creation Date', 'Updated at', 'Stage', 'User Assigned'];
+      const rows = lastLeads.map(function (lead) {
+        return [
+          lead.name,
+          lead.phone,
+          lead.campaign?.name || '',
+          lead.pipeline?.name || '',
+          formatDate(lead.created_at),
+          formatDate(lead.updated_at),
+          lead.stage?.name || lead.status || '',
+          lead.assigned_user?.name || lead.assignedUser?.name || ''
+        ].map(csvEscape).join(',');
+      });
+
+      const blob = new Blob([headers.map(csvEscape).join(',') + '\n' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'contact-search.csv';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    loadCampaigns().then(function (campaigns) {
+      hydrateCampaignSelects(campaigns);
+      if (!campaignSelect) return;
+      campaignSelect.innerHTML = '<option value="">Select Campaigns</option>' + campaigns.map(function (campaign) {
+        return '<option value="' + campaign.id + '">' + escapeHtml(campaign.name) + '</option>';
+      }).join('');
     });
 
     function fetchContacts() {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--text-muted);">Loading leads...</td></tr>';
+      showResultsPage();
+      if (contactDataTable) {
+        contactDataTable.destroy();
+        contactDataTable = null;
+      }
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--calling-crm-muted);">Loading leads...</td></tr>';
       
       const params = new URLSearchParams({ page: currentPage, per_page: perPage });
-      // Add other filter values here if necessary
+      Object.entries(activeFilters).forEach(function (entry) {
+        if (entry[1]) params.set(entry[0], entry[1]);
+      });
 
       crm('leads?' + params.toString()).then(function (payload) {
-        // The API might return paginated data: { data: [...], total, current_page, ... }
-        // Or unwrap might just give the array. Handle both cases depending on how crm() unwrap works.
         const responseData = payload.data || payload; 
         const leads = Array.isArray(responseData.data) ? responseData.data : (Array.isArray(responseData) ? responseData : []);
-        
-        const total = responseData.total || leads.length;
-        const from = responseData.from || ((currentPage - 1) * perPage + 1);
-        const to = responseData.to || (from + leads.length - 1);
-        
-        paginationInfo.textContent = `${from} - ${to} of ${total}`;
+        lastResponse = responseData;
+        lastLeads = leads;
+        updatePagination(responseData, leads);
         
         if (!leads.length) {
-          tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--text-muted);">No leads found matching your criteria.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--calling-crm-muted);">No leads found matching your criteria.</td></tr>';
           return;
         }
         
         tbody.innerHTML = leads.map(function(lead) {
-          const creationDate = new Date(lead.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-          const updatedDate = new Date(lead.updated_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-          
           return `
             <tr>
-              <td style="text-align: center;"><input type="checkbox" value="${lead.id}"></td>
-              <td style="font-weight: 600;">${escapeHtml(lead.name)}</td>
+              <td style="text-align: center;"><input type="checkbox" value="${lead.id}" data-contact-row-select></td>
+              <td title="${escapeHtml(lead.name || '')}">${escapeHtml(lead.name || '')}</td>
               <td>${escapeHtml(lead.phone)}</td>
               <td>${escapeHtml(lead.campaign?.name || '-')}</td>
               <td>${escapeHtml(lead.pipeline?.name || '-')}</td>
-              <td>${creationDate}</td>
-              <td>${updatedDate}</td>
+              <td>${formatDate(lead.created_at)}</td>
+              <td>${formatDate(lead.updated_at)}</td>
               <td>${escapeHtml(lead.stage?.name || lead.status || '-')}</td>
-              <td>${escapeHtml(lead.assignedUser?.name || '-')}</td>
+              <td>${escapeHtml(lead.assigned_user?.name || lead.assignedUser?.name || '-')}</td>
               <td>
                 <button class="action-menu-btn" data-lead-id="${lead.id}" title="Actions">
                   <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2m0-6a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2m0-6a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2z"/></svg>
@@ -211,12 +324,52 @@
             </tr>
           `;
         }).join('');
+        refreshDataTable();
       }).catch(function() {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px; color: red;">Failed to load leads.</td></tr>';
       });
     }
 
-    // Pagination Listeners
+    searchForm?.addEventListener('submit', function (event) {
+      event.preventDefault();
+      collectFilters();
+      currentPage = 1;
+      fetchContacts();
+    });
+
+    searchForm?.addEventListener('reset', function () {
+      window.setTimeout(function () {
+        sourceList?.querySelectorAll('input[name="source"]').forEach(function (input) { input.checked = false; });
+        if (campaignSelect) campaignSelect.value = '';
+      });
+    });
+
+    root.querySelector('[data-contact-back]')?.addEventListener('click', showFormPage);
+    root.querySelector('[data-source-more]')?.addEventListener('click', function (event) {
+      sourceList?.classList.toggle('show-all');
+      event.currentTarget.textContent = sourceList?.classList.contains('show-all') ? 'View Less...' : 'View More...';
+    });
+    sourceList?.addEventListener('change', function (event) {
+      const checkbox = event.target.closest('input[name="source"]');
+      if (!checkbox || !checkbox.checked) return;
+      sourceList.querySelectorAll('input[name="source"]').forEach(function (input) {
+        if (input !== checkbox) input.checked = false;
+      });
+    });
+    root.querySelector('[data-clear-source]')?.addEventListener('click', function (event) {
+      event.stopPropagation();
+      sourceList?.querySelectorAll('input[name="source"]').forEach(function (input) { input.checked = false; });
+      activeFilters.source = '';
+      currentPage = 1;
+      fetchContacts();
+    });
+    root.querySelector('[data-contact-export]')?.addEventListener('click', exportCurrentPage);
+    selectAll?.addEventListener('change', function () {
+      root.querySelectorAll('[data-contact-row-select]').forEach(function (checkbox) {
+        checkbox.checked = selectAll.checked;
+      });
+    });
+
     if (paginationSelect) {
       paginationSelect.addEventListener('change', function(e) {
         perPage = parseInt(e.target.value, 10);
@@ -231,6 +384,7 @@
     }
     if (nextBtn) {
       nextBtn.addEventListener('click', function() {
+        if (lastResponse?.last_page && currentPage >= lastResponse.last_page) return;
         currentPage++; fetchContacts();
       });
     }
@@ -304,8 +458,7 @@
 
     bindUploadButtons();
     
-    // Initial fetch
-    fetchContacts();
+    showFormPage();
   }
 
   function bindUploadButtons() {

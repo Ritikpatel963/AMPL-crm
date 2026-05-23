@@ -24,6 +24,7 @@ class LeadController extends Controller
             ])
             ->with([
                 'campaign:id,name,status',
+                'pipeline:id,name',
                 'stage:id,name,color,category',
                 'tag:id,name,color',
                 'assignedUser:id,name,phone_number',
@@ -42,6 +43,7 @@ class LeadController extends Controller
             ->when($request->filled('pipeline_id'), fn ($query) => $query->where('pipeline_id', $request->pipeline_id))
             ->when($request->filled('stage_id'), fn ($query) => $query->where('stage_id', $request->stage_id))
             ->when($request->filled('tag_id'), fn ($query) => $query->where('tag_id', $request->tag_id))
+            ->when($request->filled('source'), fn ($query) => $query->where('source', $request->source))
             ->when($request->filled('assigned_user_id'), fn ($query) => $query->where('assigned_user_id', $request->assigned_user_id))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
             ->latest()
