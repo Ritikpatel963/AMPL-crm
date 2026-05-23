@@ -271,6 +271,271 @@
       URL.revokeObjectURL(link.href);
     }
 
+    function formatDateTime(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }) + ', ' + date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+
+    function formatTimelineDate(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    function formatTime(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+
+    function normalizeKey(value) {
+      return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    }
+
+    function propertyDisplayValue(item) {
+      const value = item?.value_text ?? item?.value ?? item?.value_number ?? item?.value_date ?? item?.value_json;
+      if (value == null || value === '') return '---';
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    }
+
+    function leadProperties(lead) {
+      return (lead.property_values || lead.propertyValues || []).map(function (item) {
+        const property = item.property || {};
+        return {
+          label: property.name || property.slug || 'Property',
+          key: normalizeKey(property.slug || property.name),
+          value: propertyDisplayValue(item)
+        };
+      }).filter(function (item) {
+        return item.label;
+      });
+    }
+
+    function findProperty(properties, names) {
+      const keys = names.map(normalizeKey);
+      return properties.find(function (item) {
+        return keys.includes(item.key) || keys.includes(normalizeKey(item.label));
+      });
+    }
+
+    function detailRows(rows) {
+      if (!rows.length) {
+        return '<div class="expanded-empty">---</div>';
+      }
+
+      return '<table class="expanded-detail-table"><tbody>' + rows.map(function (row) {
+        return '<tr><th>' + escapeHtml(row.label) + '</th><td>' + escapeHtml(row.value || '---') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    }
+
+    function timelineStatus(call) {
+      const status = String(call.status || '').toLowerCase();
+      if (['answered', 'connected', 'completed', 'success'].includes(status)) {
+        return { label: 'Answered', tone: 'success', type: 'call' };
+      }
+      return { label: 'Missed', tone: 'danger', type: 'call' };
+    }
+
+    function buildTimelineEvents(lead) {
+      const events = [];
+      (lead.call_logs || lead.callLogs || []).forEach(function (call) {
+        const occurredAt = call.started_at || call.called_at || call.answered_at || call.created_at;
+        if (!occurredAt) return;
+        const status = timelineStatus(call);
+        events.push({
+          occurred_at: occurredAt,
+          title: status.label + ' | ' + formatTime(occurredAt),
+          tone: status.tone,
+          type: status.type
+        });
+      });
+
+      (lead.dispositions || []).forEach(function (disposition) {
+        const occurredAt = disposition.disposed_at || disposition.created_at;
+        if (!occurredAt) return;
+        const callStatus = disposition.call_status
+          ? disposition.call_status.replace(/_/g, ' ').replace(/\b\w/g, function (letter) { return letter.toUpperCase(); })
+          : (disposition.disposition?.name || 'Connected');
+        events.push({
+          occurred_at: occurredAt,
+          title: 'Lead Disposed | ' + callStatus + ' | ' + formatTime(occurredAt),
+          tone: 'stage',
+          type: 'dispose',
+          stage: disposition.to_stage?.name || lead.stage?.name || lead.status || ''
+        });
+      });
+
+      (lead.timeline_events || lead.timelineEvents || []).forEach(function (event) {
+        const occurredAt = event.occurred_at || event.created_at;
+        if (!occurredAt) return;
+        events.push({
+          occurred_at: occurredAt,
+          title: event.title || event.description || 'Timeline Event',
+          tone: event.event_type === 'call_missed' ? 'danger' : 'success',
+          type: event.event_type || 'event'
+        });
+      });
+
+      if (lead.created_at) {
+        const source = lead.source || lead.lead_source?.name || lead.leadSource?.name || 'Manual';
+        events.push({
+          occurred_at: lead.created_at,
+          title: 'Lead Created | Source: ' + source.replace(/_/g, ' ') + ' | ' + formatTime(lead.created_at),
+          tone: 'created',
+          type: 'created'
+        });
+      }
+
+      return events.sort(function (a, b) {
+        return new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime();
+      });
+    }
+
+    function renderTimeline(lead) {
+      const grouped = buildTimelineEvents(lead).reduce(function (carry, event) {
+        const label = formatTimelineDate(event.occurred_at);
+        if (!carry[label]) carry[label] = [];
+        carry[label].push(event);
+        return carry;
+      }, {});
+
+      const groups = Object.entries(grouped);
+      if (!groups.length) {
+        return '<div class="expanded-empty">No timeline available.</div>';
+      }
+
+      return groups.map(function (group) {
+        return '<div class="timeline-group"><div class="timeline-date">' + escapeHtml(group[0]) + '</div><div class="timeline-items">'
+          + group[1].map(function (event) {
+            const stage = event.stage ? '<span class="timeline-stage">' + escapeHtml(event.stage) + '</span>' : '';
+            return '<div class="timeline-event"><span class="timeline-dot ' + escapeHtml(event.tone) + '"></span><div><div class="timeline-title">' + escapeHtml(event.title) + '</div>' + stage + '</div></div>';
+          }).join('')
+          + '</div></div>';
+      }).join('');
+    }
+
+    function renderExpandedLead(lead) {
+      const properties = leadProperties(lead);
+      const state = findProperty(properties, ['state']);
+      const city = findProperty(properties, ['town city', 'town/city', 'city']);
+      const company = findProperty(properties, ['company name', 'company']);
+      const highlighted = [state, city, company].filter(Boolean);
+      const highlightedKeys = new Set(highlighted.map(function (item) { return item.key; }));
+      const latestDisposition = (lead.dispositions || [])[0] || {};
+      const contactList = lead.contact_list || lead.contactList || {};
+      const contactListName = [contactList.file_name, contactList.sheet_name].filter(Boolean).join('/') || '---';
+      const otherProperties = properties.filter(function (item) {
+        return !highlightedKeys.has(item.key);
+      });
+      const alternateNumbers = (lead.phone_numbers || lead.phoneNumbers || [])
+        .filter(function (phone) { return !phone.is_primary && phone.phone !== lead.phone; })
+        .map(function (phone) { return phone.phone; });
+      const engagementRows = ['English', 'Hindi', 'English NC', 'Hindi NC'].map(function (label) {
+        const match = findProperty(properties, [label]);
+        return { label: label, value: match?.value || '---' };
+      });
+
+      return `
+        <div class="expanded-lead-view">
+          <section class="expanded-panel about-panel">
+            <div class="expanded-panel-header">About Lead</div>
+            <div class="expanded-panel-body">
+              <div class="expanded-section">
+                <h4>Custom Details</h4>
+                ${detailRows(highlighted.map(function (item) { return { label: item.label, value: item.value }; }))}
+              </div>
+              <div class="expanded-section">
+                <h4>Latest Remark</h4>
+                ${detailRows([
+                  { label: 'Remark', value: latestDisposition.remark || '---' },
+                  { label: 'Date', value: formatDateTime(latestDisposition.disposed_at || latestDisposition.created_at) }
+                ])}
+              </div>
+              <div class="expanded-section">
+                <h4>Other Details</h4>
+                ${detailRows([{ label: 'Contact List Name', value: contactListName }].concat(otherProperties))}
+              </div>
+              <div class="expanded-section">
+                <h4>Alternate Number</h4>
+                ${detailRows([{ label: 'Number', value: alternateNumbers.join(', ') || '---' }])}
+              </div>
+              <div class="expanded-section">
+                <h4>Engagement form answers</h4>
+                ${detailRows(engagementRows)}
+              </div>
+              <div class="expanded-section">
+                <h4>Additional Details</h4>
+                ${detailRows([{ label: 'Deal amount', value: lead.deal_amount || '---' }])}
+              </div>
+            </div>
+          </section>
+          <section class="expanded-panel timeline-panel">
+            <div class="expanded-panel-header">Timeline</div>
+            <div class="expanded-panel-body timeline-body">
+              ${renderTimeline(lead)}
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    function closeExpandedRows() {
+      root.querySelectorAll('.contact-result-row.expanded').forEach(function (row) {
+        row.classList.remove('expanded');
+      });
+      root.querySelectorAll('.contact-expanded-row').forEach(function (row) {
+        row.remove();
+      });
+    }
+
+    function toggleExpandedLead(row) {
+      const leadId = row?.getAttribute('data-lead-id');
+      if (!leadId) return;
+
+      const existing = root.querySelector('.contact-expanded-row[data-expanded-lead-id="' + leadId + '"]');
+      if (existing) {
+        row.classList.remove('expanded');
+        existing.remove();
+        return;
+      }
+
+      closeExpandedRows();
+      row.classList.add('expanded');
+      const expandedRow = document.createElement('tr');
+      expandedRow.className = 'contact-expanded-row';
+      expandedRow.setAttribute('data-expanded-lead-id', leadId);
+      expandedRow.innerHTML = '<td colspan="10"><div class="expanded-loading">Loading lead details...</div></td>';
+      row.insertAdjacentElement('afterend', expandedRow);
+
+      crm('leads/' + leadId).then(function (payload) {
+        const lead = unwrap(payload) || {};
+        expandedRow.querySelector('td').innerHTML = renderExpandedLead(lead);
+      }).catch(function () {
+        expandedRow.querySelector('td').innerHTML = '<div class="expanded-loading error">Failed to load lead details.</div>';
+      });
+    }
+
     loadCampaigns().then(function (campaigns) {
       hydrateCampaignSelects(campaigns);
       if (!campaignSelect) return;
@@ -306,7 +571,7 @@
         
         tbody.innerHTML = leads.map(function(lead) {
           return `
-            <tr>
+            <tr class="contact-result-row" data-lead-id="${lead.id}">
               <td style="text-align: center;"><input type="checkbox" value="${lead.id}" data-contact-row-select></td>
               <td title="${escapeHtml(lead.name || '')}">${escapeHtml(lead.name || '')}</td>
               <td>${escapeHtml(lead.phone)}</td>
@@ -368,6 +633,16 @@
       root.querySelectorAll('[data-contact-row-select]').forEach(function (checkbox) {
         checkbox.checked = selectAll.checked;
       });
+    });
+
+    tbody?.addEventListener('click', function (event) {
+      if (event.target.closest('button, a, input, select, textarea, .contact-expanded-row')) {
+        return;
+      }
+
+      const row = event.target.closest('.contact-result-row');
+      if (!row) return;
+      toggleExpandedLead(row);
     });
 
     if (paginationSelect) {

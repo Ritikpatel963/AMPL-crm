@@ -84,16 +84,30 @@ class LeadController extends Controller
             'status' => true,
             'data' => $lead->load([
                 'campaign:id,name,status',
+                'pipeline:id,name',
                 'stage:id,name,color,category',
                 'tag:id,name,color',
                 'assignedUser:id,name,phone_number,email',
                 'leadSource:id,name,code',
+                'contactList:id,file_name,sheet_name,status,processed_at',
                 'phoneNumbers:id,lead_id,phone,type,is_primary',
-                'propertyValues' => fn ($query) => $query->select('id', 'lead_id', 'property_id', 'value', 'value_text', 'value_number')->with('property:id,name,slug,data_type'),
-                'callLogs' => fn ($query) => $query->select('id', 'lead_id', 'user_id', 'status', 'direction', 'started_at', 'duration_seconds')->latest('started_at')->limit(50),
+                'propertyValues' => fn ($query) => $query->select('id', 'lead_id', 'property_id', 'value', 'value_text', 'value_number', 'value_date', 'value_json')->with('property:id,name,slug,data_type'),
+                'callLogs' => fn ($query) => $query
+                    ->select('id', 'lead_id', 'user_id', 'disposition_id', 'status', 'direction', 'phone_number', 'duration_seconds', 'notes', 'called_at', 'started_at', 'answered_at', 'ended_at', 'created_at')
+                    ->with(['user:id,name', 'disposition:id,name'])
+                    ->latest('started_at')
+                    ->limit(50),
+                'dispositions' => fn ($query) => $query
+                    ->select('id', 'lead_id', 'call_log_id', 'user_id', 'campaign_id', 'from_stage_id', 'to_stage_id', 'tag_id', 'disposition_id', 'call_status', 'remark', 'disposed_at', 'created_at')
+                    ->with(['disposition:id,name', 'user:id,name', 'toStage:id,name,color,category', 'tag:id,name,color'])
+                    ->latest('disposed_at')
+                    ->limit(50),
                 'followUps' => fn ($query) => $query->select('id', 'lead_id', 'user_id', 'scheduled_at', 'status', 'note')->latest('scheduled_at')->limit(20),
                 'notes' => fn ($query) => $query->select('id', 'lead_id', 'user_id', 'note', 'visibility', 'created_at')->latest()->limit(20),
-                'timelineEvents' => fn ($query) => $query->select('id', 'lead_id', 'user_id', 'event_type', 'title', 'description', 'occurred_at')->limit(50),
+                'timelineEvents' => fn ($query) => $query
+                    ->select('id', 'lead_id', 'user_id', 'event_type', 'title', 'description', 'payload', 'occurred_at')
+                    ->with('user:id,name')
+                    ->limit(50),
             ]),
         ]);
     }

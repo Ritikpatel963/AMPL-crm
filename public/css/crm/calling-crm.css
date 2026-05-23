@@ -208,6 +208,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.contact-search-app .contact-result-row {
+    cursor: pointer;
+}
+.contact-search-app .contact-result-row.expanded td {
+    background: #fbf9fd;
+}
 .contact-search-app .action-menu-btn {
     border: 0;
     background: transparent;
@@ -221,6 +227,176 @@
     cursor: pointer;
 }
 .contact-search-app .action-menu-btn:hover { background: var(--calling-crm-surface-soft); }
+.contact-search-app .contact-expanded-row td {
+    padding: 0 !important;
+    background: #f6f3f7;
+    white-space: normal !important;
+}
+.contact-search-app .expanded-loading {
+    padding: 22px;
+    text-align: center;
+    color: var(--calling-crm-muted);
+    font-weight: 600;
+}
+.contact-search-app .expanded-loading.error {
+    color: #b91c1c;
+}
+.contact-search-app .expanded-lead-view {
+    display: grid;
+    grid-template-columns: minmax(460px, 1.05fr) minmax(420px, 1fr);
+    gap: 8px;
+    padding: 0;
+    min-height: 320px;
+}
+.contact-search-app .expanded-panel {
+    background: #fff;
+    border: 1px solid #ece7ee;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.contact-search-app .expanded-panel-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid #ece7ee;
+    color: #111827;
+    font-size: 14px;
+    font-weight: 800;
+}
+.contact-search-app .expanded-panel-body {
+    max-height: 360px;
+    overflow: auto;
+    padding: 14px 26px;
+}
+.contact-search-app .expanded-section {
+    border-bottom: 1px solid #ece7ee;
+    padding: 0 0 18px;
+    margin: 0 0 18px;
+}
+.contact-search-app .expanded-section:last-child {
+    border-bottom: 0;
+    margin-bottom: 0;
+}
+.contact-search-app .expanded-section h4 {
+    margin: 0 0 14px;
+    color: #111827;
+    font-size: 13px;
+    line-height: 1.2;
+    font-weight: 800;
+}
+.contact-search-app .expanded-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.contact-search-app .expanded-detail-table th,
+.contact-search-app .expanded-detail-table td {
+    border: 0 !important;
+    padding: 7px 14px !important;
+    vertical-align: top;
+    font-size: 12px !important;
+    line-height: 1.35;
+    background: transparent !important;
+}
+.contact-search-app .expanded-detail-table th {
+    width: 210px;
+    color: #111827;
+    font-weight: 800;
+    text-align: left;
+}
+.contact-search-app .expanded-detail-table td {
+    color: #81799d;
+}
+.contact-search-app .expanded-empty {
+    color: var(--calling-crm-muted);
+    font-size: 12px;
+    padding: 4px 14px;
+}
+.contact-search-app .timeline-body {
+    padding: 10px 12px 22px;
+}
+.contact-search-app .timeline-group {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+.contact-search-app .timeline-date {
+    justify-self: end;
+    background: #f8f8f8;
+    border-radius: 4px;
+    color: #111827;
+    font-size: 11px;
+    line-height: 1;
+    padding: 6px 8px;
+}
+.contact-search-app .timeline-items {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-left: 18px;
+}
+.contact-search-app .timeline-items::before {
+    content: "";
+    position: absolute;
+    left: 9px;
+    top: 8px;
+    bottom: -16px;
+    width: 1px;
+    background: #d9dde6;
+}
+.contact-search-app .timeline-event {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 28px;
+}
+.contact-search-app .timeline-dot {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #33b31f;
+    box-shadow: 0 0 0 3px #fff;
+}
+.contact-search-app .timeline-dot::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border: 2px solid #fff;
+    border-left: 0;
+    border-bottom: 0;
+    transform: rotate(45deg);
+}
+.contact-search-app .timeline-dot.danger {
+    background: #f10f0f;
+}
+.contact-search-app .timeline-dot.stage {
+    background: #60b82f;
+}
+.contact-search-app .timeline-dot.created {
+    background: #6b7280;
+}
+.contact-search-app .timeline-title {
+    color: #111827;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.contact-search-app .timeline-stage {
+    display: inline-flex;
+    margin-top: 7px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 11px;
+    line-height: 1;
+}
 .contact-search-app .contact-results-pagination {
     border-top: 0;
     justify-content: flex-end;
@@ -241,6 +417,7 @@
 
 @media (max-width: 1100px) {
     .contact-search-app .contact-search-grid { grid-template-columns: 1fr; }
+    .contact-search-app .expanded-lead-view { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 700px) {
