@@ -1317,7 +1317,9 @@
       stageInsertSortOrder: null,
       selectedTag: null,
       retryReason: null,
-      propertyId: null
+      propertyId: null,
+      usersTable: null,
+      propertiesTable: null
     };
     const profileForm = root.querySelector('[data-profile-form]');
     const usersBody = root.querySelector('[data-users-table-body]');
@@ -1349,9 +1351,57 @@
     const propertyForm = document.querySelector('[data-property-form]');
     const propertyCount = root.querySelector('[data-property-count]');
     const priorityList = root.querySelector('[data-priority-list]');
+    const usersSearch = root.querySelector('[data-settings-user-search]');
+    const usersRefresh = root.querySelector('[data-settings-users-refresh]');
 
     function roleLabel(role) {
       return role === 'subadmin' ? 'Admin / Team Lead' : 'Executive';
+    }
+
+    function formatSettingsDate(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).replace(/\//g, '-');
+    }
+
+    function refreshSettingsDataTable(key, selector, options) {
+      if (!window.jQuery || !jQuery.fn.DataTable) return;
+      const table = jQuery(selector);
+      if (!table.length) return;
+
+      if (settingsState[key]) {
+        settingsState[key].destroy();
+        settingsState[key] = null;
+      }
+
+      settingsState[key] = table.DataTable(Object.assign({
+        paging: true,
+        pageLength: 10,
+        lengthChange: false,
+        searching: true,
+        info: true,
+        ordering: true,
+        autoWidth: false,
+        responsive: false,
+        destroy: true,
+        dom: 'rt<"settings-datatable-footer"ip>',
+        language: {
+          emptyTable: 'No data available.',
+          info: '_START_ - _END_ of _TOTAL_',
+          infoEmpty: '0 - 0 of 0'
+        }
+      }, options || {}));
+    }
+
+    function destroySettingsDataTable(key) {
+      if (!settingsState[key]) return;
+      settingsState[key].destroy();
+      settingsState[key] = null;
     }
 
     function field(name) {
@@ -1383,23 +1433,31 @@
     function renderUsers(users) {
       if (!usersBody) return;
       settingsState.users = users;
+      destroySettingsDataTable('usersTable');
       if (!users.length) {
         usersBody.innerHTML = '<tr><td colspan="9">No CRM users yet.</td></tr>';
         return;
       }
 
       usersBody.innerHTML = users.map(function (user, index) {
-        return '<tr data-crm-user-id="' + user.id + '"><td>' + (index + 1) + '</td>'
+        return '<tr data-crm-user-id="' + user.id + '" data-crm-user-role="' + escapeHtml(user.role || 'agent') + '"><td>' + (index + 1) + '</td>'
           + '<td>' + escapeHtml(user.name) + '</td><td>' + escapeHtml(user.phone_number || '') + '</td>'
           + '<td>' + escapeHtml(user.reporting_manager?.name || '') + '</td><td>' + escapeHtml(user.email || '') + '</td>'
-          + '<td>' + escapeHtml(user.role) + '</td><td>' + escapeHtml(user.expires_at || '') + '</td>'
-          + '<td><span class="status-pill">' + escapeHtml(user.crm_status || 'active') + '</span></td>'
+          + '<td>' + escapeHtml(roleLabel(user.role)) + '</td><td>' + escapeHtml(formatSettingsDate(user.expires_at)) + '</td>'
+          + '<td><span class="status-pill ' + escapeHtml(user.crm_status || 'active') + '">' + escapeHtml(user.crm_status || 'active') + '</span></td>'
           + '<td><button type="button" class="dots-btn" aria-label="User actions" data-user-actions-toggle data-user-name="' + escapeHtml(user.name) + '"><i class="fa-solid fa-ellipsis-vertical"></i></button></td></tr>';
       }).join('');
+      refreshSettingsDataTable('usersTable', '#settingsUsersTable', {
+        columnDefs: [{ orderable: false, targets: [8] }]
+      });
+      if (usersSearch && settingsState.usersTable) {
+        settingsState.usersTable.search(usersSearch.value || '').draw();
+      }
     }
 
     function loadUsers() {
-      return crm('settings/users').then(function (payload) {
+      const params = new URLSearchParams({ per_page: 500 });
+      return crm('settings/users?' + params.toString()).then(function (payload) {
         renderUsers(unwrap(payload) || []);
       });
     }
@@ -1639,9 +1697,16 @@
 
     function renderProperties(properties) {
       if (!propertyBody) return;
+      destroySettingsDataTable('propertiesTable');
       propertyBody.innerHTML = properties.map(propertyRow).join('');
       if (!properties.length) propertyBody.innerHTML = '<tr><td colspan="4">No custom contact properties yet.</td></tr>';
       if (propertyCount) propertyCount.textContent = properties.length + '/40';
+      if (properties.length) {
+        refreshSettingsDataTable('propertiesTable', '#settingsPropertiesTable', {
+          columnDefs: [{ orderable: false, targets: [3] }],
+          pageLength: 10
+        });
+      }
     }
 
     function loadProperties() {
@@ -1693,6 +1758,16 @@
     root.querySelector('[data-add-user-open]')?.addEventListener('click', function () {
       if (usersForm) usersForm._crmEditRow = null;
     }, true);
+
+    usersSearch?.addEventListener('input', function () {
+      if (settingsState.usersTable) {
+        settingsState.usersTable.search(usersSearch.value || '').draw();
+      }
+    });
+
+    usersRefresh?.addEventListener('click', function () {
+      loadUsers();
+    });
 
     root.querySelector('[data-user-actions-menu]')?.addEventListener('click', function (event) {
       const action = event.target.closest('[data-user-action]')?.dataset.userAction;

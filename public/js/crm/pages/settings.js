@@ -60,6 +60,246 @@
             let priorityDragGhost = null;
             let activePropertyRow = null;
 
+            if (window.callingCrmRequest) {
+                const scrollStep = () => Math.max(220, Math.round(tabsTrack.clientWidth * .72));
+                const updateTabArrows = () => {
+                    const scrollEnd = tabsTrack.scrollWidth - tabsTrack.clientWidth;
+                    previousArrow.disabled = tabsTrack.scrollLeft <= 1;
+                    nextArrow.disabled = tabsTrack.scrollLeft >= scrollEnd - 1;
+                };
+                const setScrollLock = () => {
+                    const modalOpen = [...modalBackdrops].some(backdrop => backdrop.classList.contains('open'));
+                    document.body.style.overflow = modalOpen ? 'hidden' : '';
+                };
+                const closeBackdrop = backdrop => {
+                    backdrop?.classList.remove('open');
+                    backdrop?.setAttribute('aria-hidden', 'true');
+                    setScrollLock();
+                };
+                const openBackdrop = backdrop => {
+                    backdrop?.classList.add('open');
+                    backdrop?.setAttribute('aria-hidden', 'false');
+                    setScrollLock();
+                };
+                const setUsersFlow = flowName => {
+                    usersFlowViews.forEach(view => view.classList.toggle('active', view.dataset.usersFlow === flowName));
+                };
+                const setPanel = panelName => {
+                    const panel = settings.querySelector(`[data-settings-panel="${panelName}"]`);
+                    if (!panel) return;
+                    tabButtons.forEach(button => button.classList.toggle('active', button.dataset.settingsTab === panelName));
+                    tabPanels.forEach(tabPanel => tabPanel.classList.toggle('active', tabPanel === panel));
+                    if (panelName === 'users') setUsersFlow('list');
+                    userActionsMenu?.classList.remove('open');
+                };
+                const resetUserRow = row => {
+                    row?.querySelectorAll('input').forEach(input => {
+                        input.value = '';
+                        input.required = input.name === 'password[]' || input.hasAttribute('required');
+                    });
+                    row?.querySelectorAll('select').forEach(select => select.value = '');
+                    const password = row?.querySelector('input[name="password[]"]');
+                    const icon = row?.querySelector('[data-password-toggle] i');
+                    if (password) password.type = 'password';
+                    if (icon) icon.className = 'fa-solid fa-eye-slash';
+                };
+                const fillUserFormForEdit = row => {
+                    const formRow = userRows?.querySelector('[data-user-form-row]');
+                    if (!formRow || !row) return;
+                    while (userRows.children.length > 1) userRows.lastElementChild.remove();
+                    resetUserRow(formRow);
+                    formRow.querySelector('input[name="name[]"]').value = row.cells[1]?.textContent.trim() || '';
+                    formRow.querySelector('input[name="number[]"]').value = row.cells[2]?.textContent.trim() || '';
+                    formRow.querySelector('input[name="email[]"]').value = row.cells[4]?.textContent.trim() || '';
+                    formRow.querySelector('select[name="role[]"]').value = row.dataset.crmUserRole || 'agent';
+                    const password = formRow.querySelector('input[name="password[]"]');
+                    if (password) {
+                        password.value = '';
+                        password.required = false;
+                    }
+                };
+                const openUserModal = row => {
+                    editingUserRow = row || null;
+                    if (addUserForm) addUserForm._crmEditRow = row || null;
+                    if (row) {
+                        fillUserFormForEdit(row);
+                    } else {
+                        userRows?.querySelectorAll('[data-user-form-row]').forEach((formRow, index) => {
+                            if (index) formRow.remove();
+                            else {
+                                resetUserRow(formRow);
+                                const password = formRow.querySelector('input[name="password[]"]');
+                                if (password) password.required = true;
+                            }
+                        });
+                    }
+                    openBackdrop(addUserModal);
+                    addUserModal?.querySelector('input[name="name[]"]')?.focus();
+                };
+                const openUserActions = button => {
+                    if (!userActionsMenu) return;
+                    activeUserActionButton = button;
+                    const rect = button.getBoundingClientRect();
+                    const width = 260;
+                    const height = 383;
+                    userActionsMenu.style.left = `${Math.min(Math.max(4, rect.left - width + rect.width), window.innerWidth - width - 8)}px`;
+                    userActionsMenu.style.top = `${Math.min(Math.max(8, rect.bottom - 10), window.innerHeight - height - 8)}px`;
+                    userActionsMenu.classList.add('open');
+                };
+                const openPropertyModal = row => {
+                    activePropertyRow = row || null;
+                    if (propertyModalTitle) propertyModalTitle.textContent = row ? 'Edit Custom Column' : 'Add Custom Property';
+                    if (propertyNameInput) propertyNameInput.value = row?.querySelector('[data-property-name]')?.textContent.trim() || '';
+                    if (propertyTypeInput) {
+                        propertyTypeInput.disabled = Boolean(row);
+                        propertyTypeInput.value = row?.querySelector('[data-property-type]')?.textContent.trim() || '';
+                    }
+                    if (propertyNameCount) propertyNameCount.textContent = `${propertyNameInput?.value.length || 0}/60`;
+                    openBackdrop(propertyModal);
+                    propertyNameInput?.focus();
+                };
+                const openPipelineModal = mode => {
+                    const isEdit = mode === 'edit';
+                    if (pipelineModalTitle) pipelineModalTitle.textContent = isEdit ? 'Edit Pipeline' : 'Add Pipeline';
+                    if (pipelineSubmit) pipelineSubmit.textContent = isEdit ? 'Update' : 'Create';
+                    if (pipelineNameInput) pipelineNameInput.value = isEdit ? pipelineSelect?.selectedOptions[0]?.textContent.trim() || '' : '';
+                    openBackdrop(pipelineModal);
+                    pipelineNameInput?.focus();
+                };
+                const openRetryMenu = (button, row) => {
+                    if (!retryMenu) return;
+                    activeRetryRow = row;
+                    const rect = button.getBoundingClientRect();
+                    retryMenu.style.left = `${Math.min(Math.max(8, rect.right - 92), window.innerWidth - 112)}px`;
+                    retryMenu.style.top = `${Math.min(Math.max(8, rect.bottom - 6), window.innerHeight - 98)}px`;
+                    retryMenu.classList.add('open');
+                };
+                const updateAddressCount = () => {
+                    if (profileAddress && profileAddressCount) profileAddressCount.textContent = `${profileAddress.value.length}/250`;
+                };
+
+                previousArrow.addEventListener('click', () => tabsTrack.scrollBy({ left: -scrollStep(), behavior: 'smooth' }));
+                nextArrow.addEventListener('click', () => tabsTrack.scrollBy({ left: scrollStep(), behavior: 'smooth' }));
+                tabsTrack.addEventListener('scroll', updateTabArrows, { passive: true });
+                window.addEventListener('resize', updateTabArrows);
+                updateTabArrows();
+                tabButtons.forEach(button => button.addEventListener('click', () => setPanel(button.dataset.settingsTab)));
+
+                settings.querySelector('[data-add-user-open]')?.addEventListener('click', () => openUserModal());
+                settings.querySelector('[data-add-user-close]')?.addEventListener('click', () => closeBackdrop(addUserModal));
+                settings.querySelector('[data-add-user-row]')?.addEventListener('click', () => {
+                    const source = userRows?.querySelector('[data-user-form-row]');
+                    if (!source || !userRows) return;
+                    const row = source.cloneNode(true);
+                    resetUserRow(row);
+                    userRows.append(row);
+                });
+                userRows?.addEventListener('click', event => {
+                    const passwordToggle = event.target.closest('[data-password-toggle]');
+                    if (passwordToggle) {
+                        const passwordInput = passwordToggle.closest('.password-field')?.querySelector('input');
+                        const icon = passwordToggle.querySelector('i');
+                        if (!passwordInput || !icon) return;
+                        const reveal = passwordInput.type === 'password';
+                        passwordInput.type = reveal ? 'text' : 'password';
+                        icon.className = reveal ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+                    }
+                    const removeButton = event.target.closest('[data-remove-user-row]');
+                    if (removeButton) {
+                        const rows = userRows.querySelectorAll('[data-user-form-row]');
+                        if (rows.length > 1) removeButton.closest('[data-user-form-row]')?.remove();
+                        else resetUserRow(rows[0]);
+                    }
+                });
+                usersTableBody?.addEventListener('click', event => {
+                    const toggle = event.target.closest('[data-user-actions-toggle]');
+                    if (!toggle) return;
+                    event.stopPropagation();
+                    if (toggle === activeUserActionButton && userActionsMenu?.classList.contains('open')) {
+                        userActionsMenu.classList.remove('open');
+                    } else {
+                        openUserActions(toggle);
+                    }
+                });
+                userActionsMenu?.addEventListener('click', event => {
+                    const action = event.target.closest('[data-user-action]')?.dataset.userAction;
+                    const row = activeUserActionButton?.closest('tr');
+                    if (action === 'edit' || action === 'password') openUserModal(row);
+                    if (action === 'campaigns') {
+                        if (campaignUserName) campaignUserName.textContent = row?.cells[1]?.textContent.trim() || 'User';
+                        openBackdrop(campaignDetailsModal);
+                    }
+                    if (action === 'reassign') setUsersFlow('reassign-campaigns');
+                    userActionsMenu.classList.remove('open');
+                });
+                settings.querySelector('[data-campaign-details-close]')?.addEventListener('click', () => closeBackdrop(campaignDetailsModal));
+                settings.querySelector('[data-reassign-back]')?.addEventListener('click', () => setUsersFlow('list'));
+                settings.querySelector('[data-summary-back]')?.addEventListener('click', () => setUsersFlow('reassign-campaigns'));
+                settings.querySelectorAll('[data-reassign-summary-open]').forEach(button => {
+                    button.addEventListener('click', () => setUsersFlow('reassign-summary'));
+                });
+                settings.querySelectorAll('[data-pipeline-modal-open]').forEach(button => {
+                    button.addEventListener('click', () => openPipelineModal(button.dataset.pipelineModalOpen));
+                });
+                settings.querySelector('[data-pipeline-modal-close]')?.addEventListener('click', () => closeBackdrop(pipelineModal));
+                settings.querySelector('[data-working-hours-toggle]')?.addEventListener('click', () => workingHoursPanel?.classList.toggle('open'));
+                profileAddress?.addEventListener('input', updateAddressCount);
+                updateAddressCount();
+                retryTable?.addEventListener('click', event => {
+                    const setup = event.target.closest('[data-retry-setup]');
+                    if (setup) openBackdrop(retryLogicModal);
+                    const menuToggle = event.target.closest('[data-retry-action-toggle]');
+                    if (menuToggle) openRetryMenu(menuToggle, menuToggle.closest('[data-retry-row]'));
+                });
+                settings.querySelector('[data-retry-add]')?.addEventListener('click', () => {
+                    activeRetryRow = null;
+                    if (retryReasonInput) retryReasonInput.value = '';
+                    openBackdrop(retryReasonModal);
+                });
+                retryMenu?.addEventListener('click', event => {
+                    if (event.target.closest('[data-retry-menu-action]')?.dataset.retryMenuAction === 'edit') {
+                        if (retryReasonInput) retryReasonInput.value = activeRetryRow?.querySelector('.retry-reason')?.textContent.trim() || '';
+                        openBackdrop(retryReasonModal);
+                    }
+                    retryMenu.classList.remove('open');
+                });
+                settings.querySelector('[data-retry-logic-close]')?.addEventListener('click', () => closeBackdrop(retryLogicModal));
+                settings.querySelector('[data-retry-reason-close]')?.addEventListener('click', () => closeBackdrop(retryReasonModal));
+                settings.querySelector('[data-property-add]')?.addEventListener('click', () => openPropertyModal());
+                settings.querySelector('[data-property-close]')?.addEventListener('click', () => closeBackdrop(propertyModal));
+                propertyTableBody?.addEventListener('click', event => {
+                    const row = event.target.closest('[data-property-row]');
+                    if (event.target.closest('[data-property-edit]')) openPropertyModal(row);
+                });
+                propertyNameInput?.addEventListener('input', () => {
+                    if (propertyNameCount) propertyNameCount.textContent = `${propertyNameInput.value.length}/60`;
+                });
+                modalBackdrops.forEach(backdrop => {
+                    backdrop.addEventListener('click', event => {
+                        if (event.target === backdrop) closeBackdrop(backdrop);
+                    });
+                });
+                document.addEventListener('click', event => {
+                    if (!event.target.closest('[data-user-actions-toggle]') && !event.target.closest('[data-user-actions-menu]')) {
+                        userActionsMenu?.classList.remove('open');
+                    }
+                    if (!event.target.closest('[data-retry-action-toggle]') && !event.target.closest('[data-retry-menu]')) {
+                        retryMenu?.classList.remove('open');
+                    }
+                });
+                document.addEventListener('keydown', event => {
+                    if (event.key !== 'Escape') return;
+                    userActionsMenu?.classList.remove('open');
+                    retryMenu?.classList.remove('open');
+                    modalBackdrops.forEach(closeBackdrop);
+                });
+                const modalPortal = document.createElement('div');
+                modalPortal.className = 'calling-crm-settings crm-modal-portal';
+                document.body.append(modalPortal);
+                modalBackdrops.forEach(backdrop => modalPortal.append(backdrop));
+                return;
+            }
+
             const scrollStep = () => Math.max(220, Math.round(tabsTrack.clientWidth * .72));
 
             const updateTabArrows = () => {

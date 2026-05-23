@@ -9,57 +9,19 @@
     @php
         $tabs = [
             ['id' => 'users', 'label' => 'Users'],
+            ['id' => 'preference', 'label' => 'Preference'],
+            ['id' => 'accessibility', 'label' => 'Accessibility'],
             ['id' => 'pipelines', 'label' => 'Pipelines'],
             ['id' => 'profile', 'label' => 'Profile'],
             ['id' => 'roles', 'label' => 'Roles and Permission'],
+            ['id' => 'automatic-report', 'label' => 'Automatic Report'],
+            ['id' => 'manage-columns', 'label' => 'Manage Columns'],
             ['id' => 'retry', 'label' => 'Retry Setting'],
             ['id' => 'priority', 'label' => 'Lead Priority'],
             ['id' => 'properties', 'label' => 'Custom Contact Property'],
+            ['id' => 'notification', 'label' => 'Notification'],
              ];
 
-        $users = [
-            ['Abhishek Thakur', '6232122642', 'Shubham Birla', '', 'Executive', '10-10-2026'],
-            ['Aishee Bansriar', '9201977461', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Akash Pandey', '7470768021', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Anshul Vishwakarma', '8269136055', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Archita Dora', '9753000545', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Bhranti Bopache', '9201977469', 'Shubham Birla', '', 'Executive', '10-10-2026'],
-            ['Blank', '9993596924', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Blank', '9201977467', 'Shubham Birla', '', 'Executive', '10-10-2026'],
-            ['Hanshraj Yadav', '7470768022', 'Harshit Saini', '', 'Executive', '10-10-2026'],
-            ['Harshit Saini', '7015293292', '', 'parikshit1697@gmail.com', 'Admin', '10-10-2026'],
-            ['Jai Krishna Patware', '9993574730', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Jiya Srivastava', '9201977471', 'Harshit Saini', '', 'Executive', '10-10-2026'],
-            ['Kashmira Rudra', '9201977474', 'Harshit Saini', '', 'Executive', '10-10-2026'],
-            ['Muskan Prajapati', '9201977477', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Niharika Eligeti', '9203390532', 'Harshit Saini', '', 'Executive', '10-10-2026'],
-            ['Parv Yadav', '8770719711', '', '', 'Admin', '10-10-2026'],
-            ['Priyanshu Singh', '9201977462', 'Harshit Saini', '', 'Executive', '10-10-2026'],
-            ['Purva Bhosle', '9201977478', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Rahul Kourav', '7470768023', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Ravi Kumar', '9201977466', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Ritik Patel', '9630884927', '', '', 'Admin', '10-10-2026'],
-            ['Rupali Rai', '9201977468', 'Shubham Birla', '', 'Executive', '10-10-2026'],
-            ['Saksham Patware', '9201977460', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Shivam Gurjar', '9201977465', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Shivani Sengar', '8085764760', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Shubham Birla', '9753000546', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Sujal Gupta', '7879569063', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Swagat Patra', '9993593320', 'Harshit Saini', '', 'Team. Lead', '10-10-2026'],
-            ['Sweta Kumari', '9201977470', 'Shubham Birla', '', 'Executive', '10-10-2026'],
-            ['Vivek Chaudhary', '9201977463', 'Swagat Patra', '', 'Executive', '10-10-2026'],
-            ['Yuvraj Singh', '9201977464', 'Shubham Birla', '', 'Executive', '10-10-2026'],
-        ];
-
-        $customContactProperties = [
-            ['Company Name', 'text'],
-            ['Address Line 1', 'text'],
-            ['Address Line 2', 'text'],
-            ['Town/City', 'text'],
-            ['State', 'text'],
-            ['Pincode', 'number'],
-            ['GST', 'text'],
-        ];
     @endphp
 
     <div class="calling-crm-settings">
@@ -96,11 +58,11 @@
 
                     <div class="toolbar-actions">
                         <label class="search-box" aria-label="Search">
-                            <input type="search" placeholder="Search">
+                            <input type="search" placeholder="Search" data-settings-user-search>
                             <i class="fa-solid fa-filter"></i>
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </label>
-                        <button type="button" class="action-btn">
+                        <button type="button" class="action-btn" data-settings-users-refresh>
                             <i class="fa-solid fa-rotate"></i>
                             Refresh
                         </button>
@@ -121,7 +83,7 @@
 
                 <div class="table-card">
                     <div class="table-scroll">
-                        <table>
+                        <table id="settingsUsersTable">
                             <thead>
                                 <tr>
                                     <th>No.</th>
@@ -309,6 +271,34 @@
                 </div>
             </section>
 
+            <section class="settings-panel" data-settings-panel="preference">
+                <div class="users-title-row">
+                    <h2 class="users-title">Preference</h2>
+                    <a href="https://docs.neodove.com/" target="_blank" class="learn-btn" rel="noopener">
+                        <i class="fa-solid fa-book-open"></i>
+                        Learn More
+                    </a>
+                </div>
+                <p class="description" style="margin-bottom:16px;">Configure CRM preferences for calling, assignment, and daily workflows.</p>
+                <div class="settings-reference-card">
+                    <p class="description">Preference settings are loaded from your CRM configuration APIs as they become available.</p>
+                </div>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="accessibility">
+                <div class="users-title-row">
+                    <h2 class="users-title">Accessibility</h2>
+                    <a href="https://docs.neodove.com/" target="_blank" class="learn-btn" rel="noopener">
+                        <i class="fa-solid fa-book-open"></i>
+                        Learn More
+                    </a>
+                </div>
+                <p class="description" style="margin-bottom:16px;">Manage user accessibility and CRM experience preferences.</p>
+                <div class="settings-reference-card">
+                    <p class="description">Accessibility settings are ready for DB-backed controls.</p>
+                </div>
+            </section>
+
             <section class="settings-panel" data-settings-panel="pipelines">
                 <div class="pipeline-hero">
                     <div>
@@ -468,6 +458,34 @@
                 </div>
             </section>
 
+            <section class="settings-panel" data-settings-panel="automatic-report">
+                <div class="users-title-row">
+                    <h2 class="users-title">Automatic Report</h2>
+                    <a href="https://docs.neodove.com/" target="_blank" class="learn-btn" rel="noopener">
+                        <i class="fa-solid fa-book-open"></i>
+                        Learn More
+                    </a>
+                </div>
+                <p class="description" style="margin-bottom:16px;">Schedule automatic CRM reports for your team.</p>
+                <div class="settings-reference-card">
+                    <p class="description">Automatic report configuration can be connected to the report APIs here.</p>
+                </div>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="manage-columns">
+                <div class="users-title-row">
+                    <h2 class="users-title">Manage Columns</h2>
+                    <a href="https://docs.neodove.com/" target="_blank" class="learn-btn" rel="noopener">
+                        <i class="fa-solid fa-book-open"></i>
+                        Learn More
+                    </a>
+                </div>
+                <p class="description" style="margin-bottom:16px;">Choose the columns visible in CRM tables.</p>
+                <div class="settings-reference-card">
+                    <p class="description">Column management shares the same settings tab layout.</p>
+                </div>
+            </section>
+
             <section class="settings-panel" data-settings-panel="retry">
                 <div class="users-title-row">
                     <h2 class="users-title">Retry Setting</h2>
@@ -545,7 +563,7 @@
 
                 <div class="table-card">
                     <div class="table-scroll">
-                        <table class="property-table">
+                        <table id="settingsPropertiesTable" class="property-table">
                             <thead>
                                 <tr>
                                     <th>No.</th>
@@ -581,6 +599,20 @@
                     <i class="fa-solid fa-plus"></i>
                     Add New Property
                 </button>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="notification">
+                <div class="users-title-row">
+                    <h2 class="users-title">Notification</h2>
+                    <a href="https://docs.neodove.com/" target="_blank" class="learn-btn" rel="noopener">
+                        <i class="fa-solid fa-book-open"></i>
+                        Learn More
+                    </a>
+                </div>
+                <p class="description" style="margin-bottom:16px;">Manage CRM notification settings.</p>
+                <div class="settings-reference-card">
+                    <p class="description">Notification controls are ready for the relevant backend settings.</p>
+                </div>
             </section>
         </div>
 
