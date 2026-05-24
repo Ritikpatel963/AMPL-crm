@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Models\VendorOtp;
 use App\Services\WatiService;
@@ -19,19 +20,37 @@ class AuthController extends Controller
     public function agentLogin(Request $request)
     {
         $data = $request->validate([
-            'email' => ['required', 'email'],
+            'login' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'string', 'max:255'],
+            'phone_number' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'string'],
         ]);
 
+        $identifier = trim($data['login'] ?? $data['email'] ?? $data['phone_number'] ?? '');
+
+        if ($identifier === '') {
+            throw ValidationException::withMessages([
+                'login' => ['Please enter email or phone number.'],
+            ]);
+        }
+
+        $phoneCandidates = $this->phoneLoginCandidates($identifier);
+
         $user = User::query()
             ->whereIn('role', ['agent', 'subadmin'])
-            ->where('email', $data['email'])
+            ->where(function ($query) use ($identifier, $phoneCandidates) {
+                $query->where('email', $identifier);
+
+                if ($phoneCandidates !== []) {
+                    $query->orWhereIn('phone_number', $phoneCandidates);
+                }
+            })
             ->first();
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'Invalid agent email or password.',
+                'message' => 'Invalid agent login or password.',
             ], 401);
         }
 
@@ -58,6 +77,24 @@ class AuthController extends Controller
             'user' => $user,
             'approval_status' => $user->approval_status,
         ]);
+    }
+
+    private function phoneLoginCandidates(string $raw): array
+    {
+        $digits = preg_replace('/\D+/', '', $raw);
+
+        if ($digits === '') {
+            return [];
+        }
+
+        $withoutCountry = preg_replace('/^91/', '', $digits);
+
+        return array_values(array_unique(array_filter([
+            $raw,
+            $digits,
+            $withoutCountry,
+            '91' . $withoutCountry,
+        ])));
     }
 
     /*

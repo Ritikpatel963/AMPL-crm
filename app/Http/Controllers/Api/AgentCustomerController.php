@@ -22,6 +22,7 @@ class AgentCustomerController extends Controller
         }
 
         $customers = User::where('role', 'customer')
+            ->where('approval_status', 'approved')
             ->whereIn('id', function ($q) use ($agent) {
                 $q->select('customer_id')
                     ->from('agent_customer_assignments')

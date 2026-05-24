@@ -2,77 +2,76 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AdminUser;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class AdminUserController extends Controller
 {
     public function index()
     {
-        $users = AdminUser::latest()->get();
+        $users = User::query()
+            ->whereIn('role', ['subadmin', 'agent'])
+            ->latest()
+            ->get();
+
         return view('admin_panel.users.index', compact('users'));
     }
-// delete
+
     public function destroy(Request $request)
-{
-    $user = AdminUser::findOrFail($request->id);
-    $user->delete();
+    {
+        $request->validate([
+            'id' => ['required', 'exists:users,id'],
+        ]);
 
-    return redirect()->back()->with('success', 'User Deleted Successfully');
-}
+        $user = User::whereIn('role', ['subadmin', 'agent'])->findOrFail($request->id);
+        $user->delete();
 
+        return redirect()->back()->with('success', 'CRM user deleted successfully');
+    }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name'      => 'required',
-            'email'     => 'required|email|unique:adminusers,email',
-            'username'  => 'required|unique:adminusers,username',
-            'password'  => 'required|min:4',
-            'role'      => 'required'
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone_number' => ['required', 'string', 'max:30', 'unique:users,phone_number'],
+            'password' => ['required', Password::min(4)],
+            'role' => ['required', Rule::in(['subadmin', 'agent'])],
         ]);
 
-        AdminUser::create([
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'username'  => $request->username,
-            'password'  => Hash::make($request->password),
-            'role'      => $request->role,
-            'status'    => 1,
-        ]);
+        $data['crm_status'] = 'active';
+        $data['lead_assignment_enabled'] = true;
+        $data['approval_status'] = 'approved';
 
-        return redirect()->back()->with('success', 'User Created Successfully');
+        User::create($data);
+
+        return redirect()->back()->with('success', 'CRM user created successfully');
     }
 
-    // ✅ ADD THIS UPDATE FUNCTION BELOW
     public function update(Request $request)
     {
         $request->validate([
-            'name'      => 'required',
-            'email'     => 'required|email|unique:adminusers,email,' . $request->id,
-            'username'  => 'required|unique:adminusers,username,' . $request->id,
-            'role'      => 'required'
+            'id' => ['required', 'exists:users,id'],
         ]);
 
-        $user = AdminUser::findOrFail($request->id);
+        $user = User::whereIn('role', ['subadmin', 'agent'])->findOrFail($request->id);
 
-        // Update main fields
-        $user->name     = $request->name;
-        $user->email    = $request->email;
-        $user->username = $request->username;
-        $user->role     = $request->role;
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
+            'phone_number' => ['required', 'string', 'max:30', Rule::unique('users', 'phone_number')->ignore($user)],
+            'password' => ['nullable', Password::min(4)],
+            'role' => ['required', Rule::in(['subadmin', 'agent'])],
+        ]);
 
-        // ✅ If password field is filled, update password
-        if ($request->password) {
-            $request->validate([
-                'password' => 'min:4'
-            ]);
-            $user->password = Hash::make($request->password);
+        if (blank($data['password'] ?? null)) {
+            unset($data['password']);
         }
 
-        $user->save();
+        $user->update($data);
 
-        return back()->with('success', 'User Updated Successfully');
+        return back()->with('success', 'CRM user updated successfully');
     }
 }

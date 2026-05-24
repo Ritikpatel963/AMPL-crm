@@ -34,6 +34,14 @@ class EnsureApiUserIsActive
             ], 403);
         }
 
+        if ($user->role === 'customer' && $user->approval_status !== 'approved') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Your customer account is not approved yet.',
+                'approval_status' => $user->approval_status,
+            ], 403);
+        }
+
         if (in_array($user->role, ['agent', 'subadmin'], true)) {
             if ($user->crm_status !== null && $user->crm_status !== 'active') {
                 return response()->json([

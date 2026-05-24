@@ -125,11 +125,12 @@
                                 class="arrow icofont-rounded-down ms-auto text-end fs-5"></span></a>
                         <!-- Menu: Sub menu ul -->
                         <ul class="sub-menu collapse<?php echo e($isCustomerMenu ? ' show' : ''); ?>" id="menu-product_cust">
-                            <li><a class="ms-link" href="<?php echo e(route('admin_panel.admin.customers.view')); ?>">Customer
-                                    Profile</a></li>
                             <li><a class="ms-link"
                                     href="<?php echo e(route('admin_panel.admin.customers.customer_manage')); ?>">Manage
                                     Customer</a></li>
+                            <li><a class="ms-link"
+                                    href="<?php echo e(route('admin_panel.admin.customers.customer_manage', ['status' => 'pending'])); ?>">Direct Chat
+                                    Requests</a></li>
                             
                         </ul>
                     </li>

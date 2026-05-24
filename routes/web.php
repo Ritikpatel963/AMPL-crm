@@ -16,6 +16,7 @@ use App\Http\Controllers\Frontend\ProductController;
 use App\Http\Controllers\Frontend\OrderController;
 use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\AdminVendorCategoryController;
+use App\Http\Controllers\AdminCustomerController;
 
 //order route witout user login only for testing 
 Route::get('/front', [ProductController::class, 'index'])->name('shop.index');
@@ -171,13 +172,14 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
     Route::put('/vendor-categories/{id}',           [AdminVendorCategoryController::class, 'update'])->name('vendor_categories.update');
     Route::delete('/vendor-categories/{id}',        [AdminVendorCategoryController::class, 'destroy'])->name('vendor_categories.destroy');
  
-    // customer manues
-    Route::get('/customers/view', function () {
-        return view('admin_panel.customers.view');
-    })->name('customers.view');
-    Route::get('/customers/management', function () {
-        return view('admin_panel.customers.customer_manage');
-    })->name('customers.customer_manage');
+    // customer menus
+    Route::get('/customers/view', [AdminCustomerController::class, 'index'])->name('customers.view');
+    Route::get('/customers/management', [AdminCustomerController::class, 'index'])->name('customers.customer_manage');
+    Route::post('/customers', [AdminCustomerController::class, 'store'])->name('customers.store');
+    Route::post('/customers/{customer}/assign', [AdminCustomerController::class, 'assign'])->name('customers.assign');
+    Route::post('/customers/{customer}/approve', [AdminCustomerController::class, 'approve'])->name('customers.approve');
+    Route::post('/customers/{customer}/reject', [AdminCustomerController::class, 'reject'])->name('customers.reject');
+    Route::delete('/customers/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
     Route::get('/payments/management', function () {
         return view('admin_panel.payments.payment_management');
     })->name('payments.payment_management');
