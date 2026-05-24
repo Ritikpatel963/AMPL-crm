@@ -123,7 +123,26 @@
 
             </div>
         <?php endif; ?>
-        <?php $__errorArgs = ['email'];
+        <?php if(session('success')): ?>
+            <div class="admin-error-message" style="border-left-color:#22c55e;color:#d1fae5;background:rgba(34,197,94,0.12);">
+                <?php echo e(session('success')); ?>
+
+            </div>
+        <?php endif; ?>
+        <?php $__errorArgs = ['phone'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+            <div class="admin-error-message">
+                <?php echo e($message); ?>
+
+            </div>
+        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+        <?php $__errorArgs = ['otp'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -137,16 +156,29 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
 
-        <form method="POST" action="<?php echo e(route('admin_panel.admin.login.submit')); ?>">
+        <?php
+            $otpPhone = session('admin_login_phone', old('phone'));
+        ?>
+
+        <form method="POST" action="<?php echo e(route('admin_panel.admin.send.otp')); ?>">
             <?php echo csrf_field(); ?>
-            <label for="email">Email</label>
-            <input type="email" name="email" id="email" placeholder="Enter email" required>
+            <label for="phone">Phone Number</label>
+            <input type="tel" name="phone" id="phone" value="<?php echo e($otpPhone); ?>" placeholder="Enter phone number" required>
 
-            <label for="password">Password</label>
-            <input type="password" name="password" id="password" placeholder="Enter password" required>
-
-            <button type="submit" class="admin-login-button">Login</button>
+            <button type="submit" class="admin-login-button">Send OTP</button>
         </form>
+
+        <?php if($otpPhone): ?>
+            <form method="POST" action="<?php echo e(route('admin_panel.admin.login.submit')); ?>" style="margin-top:20px;">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="phone" value="<?php echo e($otpPhone); ?>">
+
+                <label for="otp">OTP</label>
+                <input type="text" name="otp" id="otp" inputmode="numeric" maxlength="6" placeholder="Enter OTP" required>
+
+                <button type="submit" class="admin-login-button">Login</button>
+            </form>
+        <?php endif; ?>
     </div>
 </body>
 </html>

@@ -14,7 +14,9 @@ class Admin extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password', // Add other fields if needed
+        'is_main_admin',
     ];
 
     protected $hidden = [
@@ -28,5 +30,10 @@ class Admin extends Authenticatable
     public function guardName(): string
     {
         return 'admin';
+    }
+
+    public function isMainAdmin(): bool
+    {
+        return (bool) $this->is_main_admin || $this->phone === '9630884927';
     }
 }

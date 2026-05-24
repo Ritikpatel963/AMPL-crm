@@ -122,22 +122,45 @@
                 {{ session('error') }}
             </div>
         @endif
-        @error('email')
+        @if(session('success'))
+            <div class="admin-error-message" style="border-left-color:#22c55e;color:#d1fae5;background:rgba(34,197,94,0.12);">
+                {{ session('success') }}
+            </div>
+        @endif
+        @error('phone')
+            <div class="admin-error-message">
+                {{ $message }}
+            </div>
+        @enderror
+        @error('otp')
             <div class="admin-error-message">
                 {{ $message }}
             </div>
         @enderror
 
-        <form method="POST" action="{{ route('admin_panel.admin.login.submit') }}">
+        @php
+            $otpPhone = session('admin_login_phone', old('phone'));
+        @endphp
+
+        <form method="POST" action="{{ route('admin_panel.admin.send.otp') }}">
             @csrf
-            <label for="email">Email</label>
-            <input type="email" name="email" id="email" placeholder="Enter email" required>
+            <label for="phone">Phone Number</label>
+            <input type="tel" name="phone" id="phone" value="{{ $otpPhone }}" placeholder="Enter phone number" required>
 
-            <label for="password">Password</label>
-            <input type="password" name="password" id="password" placeholder="Enter password" required>
-
-            <button type="submit" class="admin-login-button">Login</button>
+            <button type="submit" class="admin-login-button">Send OTP</button>
         </form>
+
+        @if($otpPhone)
+            <form method="POST" action="{{ route('admin_panel.admin.login.submit') }}" style="margin-top:20px;">
+                @csrf
+                <input type="hidden" name="phone" value="{{ $otpPhone }}">
+
+                <label for="otp">OTP</label>
+                <input type="text" name="otp" id="otp" inputmode="numeric" maxlength="6" placeholder="Enter OTP" required>
+
+                <button type="submit" class="admin-login-button">Login</button>
+            </form>
+        @endif
     </div>
 </body>
 </html>

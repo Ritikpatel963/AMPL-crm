@@ -12,20 +12,18 @@
         @csrf
 
         <div class="mb-3">
-            <label class="form-label">Email</label>
-            <input type="text" name="email" value="{{ old('email', $admin->email) }}" class="form-control" required>
+            <label class="form-label">Name</label>
+            <input type="text" name="name" value="{{ old('name', $admin->name) }}" class="form-control" required>
             @error('name') <span class="text-danger">{{ $message }}</span> @enderror
         </div>
 
         <div class="mb-3">
-            <label class="form-label">New Password (leave blank to keep current)</label>
-            <input type="password" name="password" class="form-control">
-            @error('password') <span class="text-danger">{{ $message }}</span> @enderror
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Confirm New Password</label>
-            <input type="password" name="password_confirmation" class="form-control">
+            <label class="form-label">Phone Number</label>
+            <input type="text" name="phone" value="{{ old('phone', $admin->phone) }}" class="form-control" {{ $admin->isMainAdmin() ? 'readonly' : 'required' }}>
+            @if($admin->isMainAdmin())
+                <small class="text-muted">Main admin phone number cannot be changed.</small>
+            @endif
+            @error('phone') <span class="text-danger d-block">{{ $message }}</span> @enderror
         </div>
 
         <button type="submit" class="btn btn-primary">Update Profile</button>

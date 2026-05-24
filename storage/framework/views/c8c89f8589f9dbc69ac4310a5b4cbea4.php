@@ -49,10 +49,13 @@
                     $isOrderMenu = request()->routeIs('admin_panel.admin.orders.*') || request()->routeIs('orders.*');
                     $isStockMenu = request()->routeIs('admin_panel.admin.stocks.*') || request()->routeIs('admin_panel.admin.stock.*');
                     $isCallingCrmMenu = request()->routeIs('admin_panel.admin.callingcrm.*');
+                    $isAdminMenu = request()->routeIs('admin_panel.admin.admins.*');
                 ?>
                 <ul class="menu-list flex-grow-1 mt-3">
                     <li><a class="m-link active" href="<?php echo e(route('admin_panel.admin.index')); ?>"><i
                                 class="icofont-home fs-5"></i> <span>Dashboard</span></a></li>
+                    <li><a class="m-link <?php echo e($isAdminMenu ? 'active' : ''); ?>" href="<?php echo e(route('admin_panel.admin.admins.index')); ?>"><i
+                                class="icofont-ui-lock fs-5"></i> <span>Admins</span></a></li>
                     <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('Manage Users')): ?>
                         <li class="collapsed">
                             <a class="m-link" data-bs-toggle="collapse" data-bs-target="#menu-product_user" href="#">

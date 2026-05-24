@@ -1381,7 +1381,7 @@
 
       settingsState[key] = table.DataTable(Object.assign({
         paging: true,
-        pageLength: 10,
+        pageLength: 50,
         lengthChange: false,
         searching: true,
         info: true,
@@ -1444,7 +1444,7 @@
           + '<td>' + escapeHtml(user.name) + '</td><td>' + escapeHtml(user.phone_number || '') + '</td>'
           + '<td>' + escapeHtml(user.reporting_manager?.name || '') + '</td><td>' + escapeHtml(user.email || '') + '</td>'
           + '<td>' + escapeHtml(roleLabel(user.role)) + '</td><td>' + escapeHtml(formatSettingsDate(user.expires_at)) + '</td>'
-          + '<td><span class="status-pill ' + escapeHtml(user.crm_status || 'active') + '">' + escapeHtml(user.crm_status || 'active') + '</span></td>'
+          + '<td><span class="status-pill ' + escapeHtml(user.crm_status || 'active') + '">' + escapeHtml((user.crm_status || 'active').replace(/^\w/, function (letter) { return letter.toUpperCase(); })) + '</span></td>'
           + '<td><button type="button" class="dots-btn" aria-label="User actions" data-user-actions-toggle data-user-name="' + escapeHtml(user.name) + '"><i class="fa-solid fa-ellipsis-vertical"></i></button></td></tr>';
       }).join('');
       refreshSettingsDataTable('usersTable', '#settingsUsersTable', {
@@ -1775,7 +1775,7 @@
       if (!action || !row) return;
       const userId = row.dataset.crmUserId;
       if (action === 'deactivate') {
-        crm('settings/users/' + userId + '/status', { method: 'PATCH', body: { crm_status: row.querySelector('.status-pill')?.textContent.trim() === 'active' ? 'inactive' : 'active' } }).then(loadUsers);
+        crm('settings/users/' + userId + '/status', { method: 'PATCH', body: { crm_status: row.querySelector('.status-pill')?.textContent.trim().toLowerCase() === 'active' ? 'inactive' : 'active' } }).then(loadUsers);
       }
       if (action === 'disable') {
         crm('settings/users/' + userId + '/status', { method: 'PATCH', body: { lead_assignment_enabled: false } }).then(function () { toast('Lead assignment disabled.'); });

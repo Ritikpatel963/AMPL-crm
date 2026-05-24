@@ -66,6 +66,7 @@ Route::get('/dashboard', function () {
 Route::middleware('guest:admin')->group(function () {
     Route::get('/', [AdminAuthController::class, 'showLoginForm']);
     Route::get('/admin', [AdminAuthController::class, 'showLoginForm'])->name('admin_panel.admin.login');
+    Route::post('/admin/send-otp', [AdminAuthController::class, 'sendOtp'])->name('admin_panel.admin.send.otp');
     Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin_panel.admin.login.submit');
 });
 
@@ -73,6 +74,10 @@ Route::middleware('guest:admin')->group(function () {
 Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['auth:admin'])->group(function () {
     Route::get('/profile', [AdminAuthController::class, 'editProfile'])->name('edit.profile');
     Route::post('/profile', [AdminAuthController::class, 'updateProfile'])->name('update.profile');
+    Route::get('/admins', [AdminAuthController::class, 'admins'])->name('admins.index');
+    Route::post('/admins', [AdminAuthController::class, 'storeAdmin'])->name('admins.store');
+    Route::put('/admins/{admin}', [AdminAuthController::class, 'updateAdmin'])->name('admins.update');
+    Route::delete('/admins/{admin}', [AdminAuthController::class, 'destroyAdmin'])->name('admins.destroy');
     Route::get('/index', [AdminAuthController::class, 'dashboard'])->name('index');
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
     //categories
