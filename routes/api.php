@@ -26,24 +26,28 @@ use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 // PUBLIC ROUTE — LOGIN
-Route::post('login/send-otp', [AuthController::class, 'sendLoginOtp']);
-Route::post('login/verify', [AuthController::class, 'login']);
-Route::post('agent/login', [AuthController::class, 'agentLogin']);
+Route::middleware('throttle:6,1')->group(function () {
+    Route::post('login/send-otp', [AuthController::class, 'sendLoginOtp']);
+    Route::post('login/verify', [AuthController::class, 'login']);
+    Route::post('agent/login', [AuthController::class, 'agentLogin']);
+});
 
 // Route::post('/vendor/register', [VendorAuthController::class, 'register']);
-Route::post('/vendor/send-otp',   [VendorAuthController::class, 'sendOtp']);
-Route::post('/vendor/register',   [VendorAuthController::class, 'register']);
-Route::post('/vendor/resend-otp', [VendorAuthController::class, 'resendOtp']);
+Route::middleware('throttle:6,1')->group(function () {
+    Route::post('/vendor/send-otp', [VendorAuthController::class, 'sendOtp']);
+    Route::post('/vendor/register', [VendorAuthController::class, 'register']);
+    Route::post('/vendor/resend-otp', [VendorAuthController::class, 'resendOtp']);
+});
 
 Broadcast::routes([
     'middleware' => ['auth:sanctum'],
 ]);
 
 // PROTECTED ROUTES — REQUIRE TOKEN
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1'])->group(function () {
     // Customers
-    Route::get('/agent/customers', [AgentCustomerController::class, 'getAssignedCustomers']);
-    Route::get('/customer/agent', [AgentCustomerController::class, 'getCustomerAgent']);
+    Route::get('/agent/customers', [AgentCustomerController::class, 'getAssignedCustomers'])->middleware('api.role:agent');
+    Route::get('/customer/agent', [AgentCustomerController::class, 'getCustomerAgent'])->middleware('api.role:customer');
 
     // Products
     Route::get('/products', [ProductController::class, 'index']);
@@ -53,29 +57,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/messages/{user_id}', [MessageController::class, 'getMessages']);
     Route::post('/messages/seen/{user_id}', [MessageController::class, 'markAsSeen']);
     Route::get('/message/latest/{user_id}', [MessageController::class, 'getLatestMessage']);
-    Route::post('/messages/send', [MessageController::class, 'sendMessage']);
-    Route::post('/messages/send-product', [MessageController::class, 'sendProduct']);
+    Route::post('/messages/send', [MessageController::class, 'sendMessage'])->middleware('throttle:30,1');
+    Route::post('/messages/send-product', [MessageController::class, 'sendProduct'])->middleware('throttle:30,1');
 
     // VENDOR PRODUCTS
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/categories/parents', [CategoryController::class, 'parentCategories']);
     Route::get('/categories/{id}/subcategories', [CategoryController::class, 'subCategories']);
 
-    // VENDOR PROFILE & PERSONAL FORM
-    Route::get('/vendor/profile', [VendorController::class, 'getProfileData']);
-    Route::get('/vendor/personal-form', [VendorController::class, 'getPersonalFormData']);
-    Route::put('/vendor/profile', [VendorController::class, 'updateProfileData']);
+    Route::middleware('api.role:vendor')->group(function () {
+        // VENDOR PROFILE & PERSONAL FORM
+        Route::get('/vendor/profile', [VendorController::class, 'getProfileData']);
+        Route::get('/vendor/personal-form', [VendorController::class, 'getPersonalFormData']);
+        Route::put('/vendor/profile', [VendorController::class, 'updateProfileData'])->middleware('throttle:30,1');
 
-    // VENDOR PRODUCTS
-    Route::post('/vendor/metrics', [VendorProductController::class, 'metrics']);
-    Route::post('/vendor/products', [VendorProductController::class, 'store']);
-    Route::get('/vendor/products', [VendorProductController::class, 'index']);
-    Route::get('/vendor/products/{id}', [VendorProductController::class, 'show']);
-    Route::put('/vendor/products/{id}', [VendorProductController::class, 'update']);
-    Route::delete('/vendor/products/{id}', [VendorProductController::class, 'destroy']);
-    Route::get('/vendor/categories', [VendorCategoryController::class, 'index']);
+        // VENDOR PRODUCTS
+        Route::post('/vendor/metrics', [VendorProductController::class, 'metrics']);
+        Route::post('/vendor/products', [VendorProductController::class, 'store'])->middleware('throttle:20,1');
+        Route::get('/vendor/products', [VendorProductController::class, 'index']);
+        Route::get('/vendor/products/{id}', [VendorProductController::class, 'show']);
+        Route::put('/vendor/products/{id}', [VendorProductController::class, 'update'])->middleware('throttle:30,1');
+        Route::delete('/vendor/products/{id}', [VendorProductController::class, 'destroy'])->middleware('throttle:20,1');
+        Route::get('/vendor/categories', [VendorCategoryController::class, 'index']);
+    });
 
-        Route::prefix('calling-crm')->group(function () {
+        Route::prefix('calling-crm')->middleware('api.callingcrm')->group(function () {
         // Settings
         Route::get('/settings/bootstrap', [CallingCrmSettingsController::class, 'bootstrap']);
         Route::get('/settings/profile', [CallingCrmSettingsController::class, 'profile']);
@@ -131,6 +137,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/campaigns/{campaign}/tags-summary', [CallingCrmCampaignController::class, 'tagsSummary']);
         Route::post('/campaigns/{campaign}/agents', [CallingCrmCampaignController::class, 'addAgents']);
         Route::delete('/campaigns/{campaign}/agents/{user}', [CallingCrmCampaignController::class, 'removeAgent']);
+        Route::get('/campaigns/{campaign}/assignment-rules', [CallingCrmCampaignController::class, 'assignmentRules']);
+        Route::post('/campaigns/{campaign}/assignment-rules', [CallingCrmCampaignController::class, 'storeAssignmentRule']);
+        Route::put('/campaigns/{campaign}/assignment-rules/{rule}', [CallingCrmCampaignController::class, 'updateAssignmentRule']);
+        Route::delete('/campaigns/{campaign}/assignment-rules/{rule}', [CallingCrmCampaignController::class, 'destroyAssignmentRule']);
 
         // Leads
         Route::get('/leads', [CallingCrmLeadController::class, 'index']);

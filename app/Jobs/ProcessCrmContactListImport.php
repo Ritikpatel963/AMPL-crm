@@ -6,6 +6,7 @@ use App\Models\ContactList;
 use App\Models\ContactListRow;
 use App\Models\Lead;
 use App\Models\LeadSource;
+use App\Services\CallingCrm\LeadAssignmentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -25,7 +26,7 @@ class ProcessCrmContactListImport implements ShouldQueue
 
     public function __construct(public ContactList $contactList) {}
 
-    public function handle(): void
+    public function handle(LeadAssignmentService $assignmentService): void
     {
         $this->contactList->update(['status' => 'processing']);
 
@@ -76,6 +77,7 @@ class ProcessCrmContactListImport implements ShouldQueue
                                 'email' => $row['email'] ?? $row[2] ?? null,
                                 'status' => 'uncontacted',
                             ]);
+                            $assignmentService->assignLead($lead);
                             $status = 'created';
                             $leadId = $lead->id;
                             $created++;

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\CallingCrm;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessCrmContactListImport;
 use App\Models\Campaign;
 use App\Models\ContactList;
 use Illuminate\Http\Request;
@@ -43,6 +44,8 @@ class ImportController extends Controller
             'status' => 'queued',
             'mapping' => $data['mapping'] ?? null,
         ]);
+
+        ProcessCrmContactListImport::dispatch($import);
 
         return response()->json([
             'status' => true,

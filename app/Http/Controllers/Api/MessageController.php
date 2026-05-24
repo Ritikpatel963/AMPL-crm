@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Events\MessageSendEvent;
 use App\Http\Controllers\Controller;
+use App\Models\AgentCustomerAssignment;
 use App\Models\Message;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +17,15 @@ class MessageController extends Controller
     public function getMessages($user_id)
     {
         try {
-            $authId = auth()->id();
+            $authUser = auth()->user();
+            $authId = $authUser->id;
+
+            if (!$this->canMessageUser($authUser, (int) $user_id)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized conversation.',
+                ], 403);
+            }
 
             $messages = Message::where(function ($query) use ($authId, $user_id) {
                     $query->where('sender_id', $authId)
@@ -53,8 +63,15 @@ class MessageController extends Controller
     {
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
-            'message' => 'required|string',
+            'message' => 'required|string|max:5000',
         ]);
+
+        if (!$this->canMessageUser($request->user(), (int) $request->receiver_id)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized conversation.',
+            ], 403);
+        }
 
         try {
             DB::beginTransaction();
@@ -92,6 +109,13 @@ class MessageController extends Controller
             'receiver_id' => 'required|exists:users,id',
             'product_id'  => 'required|exists:products,id',
         ]);
+
+        if (!$this->canMessageUser($request->user(), (int) $request->receiver_id)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized conversation.',
+            ], 403);
+        }
 
         try {
             DB::beginTransaction();
@@ -134,6 +158,13 @@ class MessageController extends Controller
     public function markAsSeen($user_id)
     {
         try {
+            if (!$this->canMessageUser(auth()->user(), (int) $user_id)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized conversation.',
+                ], 403);
+            }
+
             DB::beginTransaction();
 
             Message::where('sender_id', $user_id)
@@ -157,5 +188,71 @@ class MessageController extends Controller
                 'message' => 'Failed to mark messages as seen'
             ], 500);
         }
+    }
+
+    public function getLatestMessage($user_id)
+    {
+        try {
+            $authUser = auth()->user();
+
+            if (!$this->canMessageUser($authUser, (int) $user_id)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized conversation.',
+                ], 403);
+            }
+
+            $message = Message::where(function ($query) use ($authUser, $user_id) {
+                    $query->where('sender_id', $authUser->id)
+                        ->where('receiver_id', $user_id);
+                })
+                ->orWhere(function ($query) use ($authUser, $user_id) {
+                    $query->where('sender_id', $user_id)
+                        ->where('receiver_id', $authUser->id);
+                })
+                ->latest()
+                ->first();
+
+            return response()->json([
+                'status' => true,
+                'message' => $message,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Latest Message Error', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to load latest message',
+            ], 500);
+        }
+    }
+
+    private function canMessageUser(User $authUser, int $otherUserId): bool
+    {
+        if ($authUser->id === $otherUserId) {
+            return false;
+        }
+
+        if (!User::whereKey($otherUserId)->exists()) {
+            return false;
+        }
+
+        if ($authUser->role === 'subadmin') {
+            return true;
+        }
+
+        if ($authUser->role === 'agent') {
+            return AgentCustomerAssignment::where('agent_id', $authUser->id)
+                ->where('customer_id', $otherUserId)
+                ->exists();
+        }
+
+        if ($authUser->role === 'customer') {
+            return AgentCustomerAssignment::where('customer_id', $authUser->id)
+                ->where('agent_id', $otherUserId)
+                ->exists();
+        }
+
+        return false;
     }
 }

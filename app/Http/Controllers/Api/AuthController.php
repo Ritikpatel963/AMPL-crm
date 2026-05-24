@@ -187,7 +187,7 @@ class AuthController extends Controller
             Log::info('[LOGIN-SEND-OTP] Old unverified OTPs deleted', ['count' => $deleted]);
 
             $otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-            Log::info('[LOGIN-SEND-OTP] OTP generated', ['otp' => $otp]); // REMOVE in production!
+            Log::info('[LOGIN-SEND-OTP] OTP generated');
 
             VendorOtp::create([
                 'phone_number' => $phone,
@@ -204,7 +204,6 @@ class AuthController extends Controller
 
             Log::info('[LOGIN-SEND-OTP] OTP saved to DB — verification', [
                 'saved_phone'   => $savedRecord?->phone_number,
-                'saved_otp'     => $savedRecord?->otp,        // REMOVE in production!
                 'expires_at'    => $savedRecord?->expires_at,
                 'record_exists' => !is_null($savedRecord),
             ]);
@@ -235,7 +234,6 @@ class AuthController extends Controller
                 'message' => $e->getMessage(),
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
             ]);
             return response()->json([
                 'status'  => false,
@@ -276,13 +274,13 @@ class AuthController extends Controller
             // ── OTP DB Diagnostics ────────────────────────────────────────────
             $allOtps = VendorOtp::where('phone_number', $phone)
                 ->orderByDesc('created_at')
-                ->get(['phone_number', 'otp', 'is_verified', 'expires_at', 'created_at'])
+                ->get(['phone_number', 'is_verified', 'expires_at', 'created_at'])
                 ->toArray();
 
             Log::info('[LOGIN] All OTP records for phone', [
                 'phone'   => $phone,
                 'count'   => count($allOtps),
-                'records' => $allOtps, // REMOVE in production!
+                'records' => $allOtps,
             ]);
 
             if (empty($allOtps)) {
@@ -292,7 +290,6 @@ class AuthController extends Controller
             // ── OTP Verification ──────────────────────────────────────────────
             Log::info('[LOGIN] Searching for matching OTP', [
                 'phone' => $phone,
-                'otp'   => $request->otp, // REMOVE in production!
             ]);
 
             $otpRecord = VendorOtp::where('phone_number', $phone)
@@ -304,7 +301,6 @@ class AuthController extends Controller
             Log::info('[LOGIN] OTP record lookup result', [
                 'found'        => !is_null($otpRecord),
                 'record_phone' => $otpRecord?->phone_number,
-                'record_otp'   => $otpRecord?->otp,        // REMOVE in production!
                 'is_verified'  => $otpRecord?->is_verified,
                 'expires_at'   => $otpRecord?->expires_at,
                 'now'          => now()->toDateTimeString(),
@@ -313,7 +309,6 @@ class AuthController extends Controller
             if (!$otpRecord) {
                 Log::warning('[LOGIN] ❌ OTP record not found', [
                     'searched_phone' => $phone,
-                    'searched_otp'   => $request->otp,
                     'hint'           => 'Check all OTP records above — if count is 0, phone mismatch. If count > 0, OTP value is wrong or already used.',
                 ]);
                 return response()->json([
@@ -404,7 +399,6 @@ class AuthController extends Controller
                 'message' => $e->getMessage(),
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
             ]);
             return response()->json([
                 'status'  => false,

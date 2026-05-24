@@ -32,7 +32,6 @@ class WatiService
 
         Log::info('[WATI] Sending to phone', [
             'cleaned'  => $phone,
-            'otp'      => $otp,
             'endpoint' => $this->endpoint,
             'template' => $this->template,
             'channel'  => $this->channelNumber,
@@ -56,7 +55,10 @@ class WatiService
             'channel_number' => $this->channelNumber,
         ];
 
-        Log::info('[WATI] Full payload', ['payload' => $payload]);
+        Log::info('[WATI] OTP payload prepared', [
+            'phone' => $phone,
+            'template' => $this->template,
+        ]);
 
         try {
             $response = Http::withToken($this->token)
@@ -66,7 +68,6 @@ class WatiService
             if ($response->successful()) {
                 Log::info('[WATI] ✅ OTP sent successfully', [
                     'phone' => $phone,
-                    'otp'   => $otp,  // remove in production
                 ]);
                 return true;
             }

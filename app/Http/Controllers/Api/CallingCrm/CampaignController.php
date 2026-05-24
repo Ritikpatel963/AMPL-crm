@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\Api\CallingCrm;
 
 use App\Http\Controllers\Controller;
+use App\Models\AssignmentRule;
 use App\Models\Campaign;
+use App\Models\Lead;
+use App\Services\CallingCrm\LeadAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class CampaignController extends Controller
 {
+    public function __construct(private LeadAssignmentService $assignmentService) {}
+
     public function index(Request $request)
     {
         $campaigns = Campaign::query()
@@ -35,6 +40,7 @@ class CampaignController extends Controller
 
         $campaign = Campaign::create($data);
         $this->syncAgents($campaign, $agentIds);
+        $this->assignmentService->distributeUnassigned($campaign->fresh('users'));
 
         return response()->json([
             'status' => true,
@@ -67,6 +73,8 @@ class CampaignController extends Controller
         if (is_array($agentIds)) {
             $this->syncAgents($campaign, $agentIds);
         }
+
+        $this->assignmentService->distributeUnassigned($campaign->fresh('users'));
 
         return response()->json([
             'status' => true,
@@ -132,6 +140,7 @@ class CampaignController extends Controller
         ]);
 
         $this->syncAgents($campaign, $data['agent_ids']);
+        $this->assignmentService->distributeUnassigned($campaign->fresh('users'));
 
         return response()->json([
             'status' => true,
@@ -143,11 +152,66 @@ class CampaignController extends Controller
     public function removeAgent(Campaign $campaign, \App\Models\User $user)
     {
         $campaign->users()->detach($user->id);
+        Lead::where('campaign_id', $campaign->id)
+            ->where('assigned_user_id', $user->id)
+            ->update(['assigned_user_id' => null]);
+        $this->assignmentService->distributeUnassigned($campaign->fresh('users'));
 
         return response()->json([
             'status' => true,
             'message' => 'Agent removed successfully',
             'data' => $campaign->fresh(['pipeline', 'users']),
+        ]);
+    }
+
+    public function assignmentRules(Campaign $campaign)
+    {
+        return response()->json([
+            'status' => true,
+            'data' => $campaign->assignmentRules()
+                ->with('user:id,name,email,phone_number')
+                ->orderBy('sort_order')
+                ->get(),
+        ]);
+    }
+
+    public function storeAssignmentRule(Request $request, Campaign $campaign)
+    {
+        $data = $this->validateAssignmentRule($request, $campaign);
+        $rule = $campaign->assignmentRules()->create($data);
+
+        $this->assignmentService->distributeUnassigned($campaign);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Assignment rule created successfully',
+            'data' => $rule->load('user:id,name,email,phone_number'),
+        ], 201);
+    }
+
+    public function updateAssignmentRule(Request $request, Campaign $campaign, AssignmentRule $rule)
+    {
+        abort_if($rule->campaign_id !== $campaign->id, 404);
+
+        $rule->update($this->validateAssignmentRule($request, $campaign, true));
+        $this->assignmentService->distributeUnassigned($campaign);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Assignment rule updated successfully',
+            'data' => $rule->fresh('user:id,name,email,phone_number'),
+        ]);
+    }
+
+    public function destroyAssignmentRule(Campaign $campaign, AssignmentRule $rule)
+    {
+        abort_if($rule->campaign_id !== $campaign->id, 404);
+
+        $rule->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Assignment rule deleted successfully',
         ]);
     }
 
@@ -234,5 +298,30 @@ class CampaignController extends Controller
         }
 
         $campaign->users()->sync($sync);
+
+        $orphanedLeads = Lead::where('campaign_id', $campaign->id)->whereNotNull('assigned_user_id');
+        if ($sync !== []) {
+            $orphanedLeads->whereNotIn('assigned_user_id', array_keys($sync));
+        }
+        $orphanedLeads->update(['assigned_user_id' => null]);
+    }
+
+    private function validateAssignmentRule(Request $request, Campaign $campaign, bool $partial = false): array
+    {
+        $required = $partial ? 'sometimes' : 'required';
+
+        return $request->validate([
+            'user_id' => [
+                $required,
+                Rule::exists('campaign_user', 'user_id')->where('campaign_id', $campaign->id),
+            ],
+            'name' => ['nullable', 'string', 'max:120'],
+            'condition_field' => [$required, 'string', 'max:120'],
+            'condition_operator' => ['sometimes', Rule::in(['equals', 'not_equals', 'contains', 'starts_with', 'ends_with'])],
+            'condition_value' => [$required, 'string', 'max:180'],
+            'sort_order' => ['sometimes', 'integer', 'min:0'],
+            'is_active' => ['sometimes', 'boolean'],
+            'settings' => ['nullable', 'array'],
+        ]);
     }
 }

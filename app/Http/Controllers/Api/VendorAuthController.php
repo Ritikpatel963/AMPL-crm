@@ -125,14 +125,13 @@ class VendorAuthController extends Controller
             }
 
             $otp = $this->createOtp($normalizedPhone);
-            Log::info('[SEND-OTP] ✅ OTP generated', ['phone' => $normalizedPhone, 'otp' => $otp]);
+            Log::info('[SEND-OTP] OTP generated', ['phone' => $normalizedPhone]);
 
             $savedRecord = VendorOtp::where('phone_number', $normalizedPhone)
                 ->where('is_verified', false)->latest()->first();
 
             Log::info('[SEND-OTP] OTP DB record check', [
                 'record_exists' => !is_null($savedRecord),
-                'saved_otp'     => $savedRecord?->otp,
                 'expires_at'    => $savedRecord?->expires_at,
             ]);
 
@@ -160,7 +159,6 @@ class VendorAuthController extends Controller
                 'message' => $e->getMessage(),
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
             ]);
             return response()->json(['status' => false, 'message' => 'Something went wrong. Please try again.'], 500);
         }
@@ -266,7 +264,7 @@ class VendorAuthController extends Controller
 
             $allOtpsForPhone = VendorOtp::where('phone_number', $normalizedPhone)
                 ->orderByDesc('created_at')
-                ->get(['phone_number', 'otp', 'is_verified', 'expires_at', 'created_at'])
+                ->get(['phone_number', 'is_verified', 'expires_at', 'created_at'])
                 ->toArray();
 
             Log::info('[REGISTER] All OTP records for phone', [
@@ -372,7 +370,6 @@ class VendorAuthController extends Controller
                 'message' => $e->getMessage(),
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
             ]);
             return response()->json(['status' => false, 'message' => 'Registration failed. Please try again.'], 500);
         }

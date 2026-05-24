@@ -37039,3 +37039,6 @@ Did you mean this?
 [2026-05-24 16:31:35] local.INFO: [WATI] Sending to phone {"cleaned":"919630884927","otp":"570784","endpoint":"https://live-mt-server.wati.io/10109984","template":"otp","channel":"919201977476"} 
 [2026-05-24 16:31:35] local.INFO: [WATI] Full payload {"payload":{"template_name":"otp","broadcast_name":"vendor_otp_1779620495","receivers":[{"whatsappNumber":"919630884927","localMessageId":"otp_6a12da8fb34b5","customParams":[{"name":"1","value":"570784"},{"name":"2","value":"570784"}]}],"channel_number":"919201977476"}} 
 [2026-05-24 16:31:36] local.INFO: [WATI] ✅ OTP sent successfully {"phone":"919630884927","otp":"570784"} 
+[2026-05-24 17:04:27] local.INFO: [WATI] Sending to phone {"cleaned":"919630884927","endpoint":"https://live-mt-server.wati.io/10109984","template":"otp","channel":"919201977476"} 
+[2026-05-24 17:04:27] local.INFO: [WATI] OTP payload prepared {"phone":"919630884927","template":"otp"} 
+[2026-05-24 17:04:28] local.INFO: [WATI] ✅ OTP sent successfully {"phone":"919630884927"} 

@@ -7,12 +7,15 @@ use App\Models\CrmNote;
 use App\Models\Lead;
 use App\Models\LeadPhoneNumber;
 use App\Models\TimelineEvent;
+use App\Services\CallingCrm\LeadAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class LeadController extends Controller
 {
+    public function __construct(private LeadAssignmentService $assignmentService) {}
+
     public function index(Request $request)
     {
         $leads = Lead::query()
@@ -61,6 +64,7 @@ class LeadController extends Controller
         $lead = DB::transaction(function () use ($data, $properties) {
             $lead = Lead::create($data);
             $this->syncProperties($lead, $properties);
+            $this->assignmentService->assignLead($lead);
 
             return $lead;
         });
@@ -239,27 +243,12 @@ class LeadController extends Controller
 
         $campaign = \App\Models\Campaign::findOrFail($data['campaign_id']);
         $chunkSize = $data['chunk_size'] ?? ($campaign->lead_chunk_size ?? 10);
-        $userId = auth()->id();
-
-        $leads = Lead::where('campaign_id', $campaign->id)
-            ->whereNull('assigned_user_id')
-            ->where('status', 'uncontacted')
-            ->orderBy('created_at')
-            ->limit($chunkSize)
-            ->get();
-
-        $leadIds = $leads->pluck('id');
-
-        if ($leadIds->isNotEmpty()) {
-            Lead::whereIn('id', $leadIds)->update(['assigned_user_id' => $userId]);
-        }
+        $leads = $this->assignmentService->claimNextForUser($campaign, $request->user(), $chunkSize);
 
         return response()->json([
             'status' => true,
-            'message' => $leadIds->isNotEmpty() ? 'Leads assigned successfully' : 'No unassigned leads available',
-            'data' => Lead::whereIn('id', $leadIds)
-                ->with(['campaign:id,name', 'stage:id,name,color', 'tag:id,name,color'])
-                ->get(),
+            'message' => $leads->isNotEmpty() ? 'Leads assigned successfully' : 'No unassigned leads available',
+            'data' => $leads,
         ]);
     }
 

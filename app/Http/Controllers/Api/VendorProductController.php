@@ -116,7 +116,8 @@ class VendorProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
+            Log::error('Vendor product index failed', ['error' => $e->getMessage()]);
+            return response()->json(['status' => false, 'message' => 'Failed to load products'], 500);
         }
     }
 
@@ -208,9 +209,10 @@ class VendorProductController extends Controller
     public function store(Request $request)
 {
     Log::info("====== STORE PRODUCT STARTED ======");
-    Log::info("RAW Request Headers: ", $request->headers->all());
-    Log::info("RAW Request Data: ", $request->all());
-    Log::info("Files in request: ", array_keys($request->allFiles()));
+    Log::info("Request summary", [
+        'keys' => array_keys($request->except(['variations'])),
+        'files' => array_keys($request->allFiles()),
+    ]);
     Log::info("User from token: " . ($request->user() ? $request->user()->id : 'NULL - NOT AUTHENTICATED'));
 
     // ---- STEP 1: VALIDATION ----
@@ -220,8 +222,9 @@ class VendorProductController extends Controller
             'product_name'   => 'required|string|max:255',
             'category_id'    => 'required|integer|exists:vendor_categories,id',
             'brand_name'     => 'nullable|string|max:255',
-            'variations'     => 'required|string',
-            'images.*'       => 'nullable|image|mimes:jpg,jpeg,png'
+            'variations'     => 'required|string|max:20000',
+            'images'         => 'nullable|array|max:8',
+            'images.*'       => 'nullable|image|mimes:jpg,jpeg,png|max:5120'
         ]);
         Log::info("STEP 1: Validation PASSED");
     } catch (\Illuminate\Validation\ValidationException $ve) {
@@ -264,7 +267,6 @@ class VendorProductController extends Controller
 
         // ---- STEP 4: DECODE VARIATIONS ----
         Log::info("STEP 4: Decoding variations JSON...");
-        Log::info("STEP 4: Raw variations string => " . $request->variations);
         $variations = json_decode($request->variations, true);
         $jsonError  = json_last_error_msg();
         Log::info("STEP 4: JSON decode error check => $jsonError");
@@ -320,13 +322,11 @@ class VendorProductController extends Controller
         Log::error("ERROR Message => " . $e->getMessage());
         Log::error("ERROR File    => " . $e->getFile());
         Log::error("ERROR Line    => " . $e->getLine());
-        Log::error("ERROR Trace   => " . $e->getTraceAsString());
         Log::info("====== STORE PRODUCT END (WITH ERROR) ======");
 
         return response()->json([
             'status'  => false,
             'message' => 'Bulk creation failed',
-            'error'   => $e->getMessage()
         ], 500);
     }
 }
@@ -479,8 +479,9 @@ public function update(Request $request, $id)
             'unit_type'      => 'sometimes|string',
             'unit_size'      => 'sometimes|string',
             'product_expiry' => 'sometimes|nullable|date',
-            'variations'     => 'nullable|string', // 🔥 Added variations validation
-            'images.*'       => 'nullable|image|mimes:jpg,jpeg,png,dng'
+            'variations'     => 'nullable|string|max:20000', // 🔥 Added variations validation
+            'images'         => 'nullable|array|max:8',
+            'images.*'       => 'nullable|image|mimes:jpg,jpeg,png|max:5120'
         ]);
         Log::info('STEP 2: Validation PASSED');
     } catch (\Illuminate\Validation\ValidationException $ve) {
@@ -501,7 +502,7 @@ public function update(Request $request, $id)
                 $image->move(public_path('uploads/products'), $imageName);
                 $newImages[] = "uploads/products/" . $imageName;
             } catch (\Exception $imgEx) {
-                Log::error("Image upload FAILED => " . $imgEx.getMessage());
+                Log::error("Image upload FAILED => " . $imgEx->getMessage());
             }
         }
         $product->images = $newImages;
@@ -521,7 +522,6 @@ public function update(Request $request, $id)
         return response()->json([
             'status'  => false,
             'message' => 'Failed to update product',
-            'error'   => $dbEx->getMessage()
         ], 500);
     }
 
