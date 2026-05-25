@@ -8,6 +8,7 @@ use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -16,6 +17,12 @@ class CallController extends Controller
     public function index(Request $request)
     {
         $calls = CallLog::with(['lead', 'campaign', 'user', 'disposition'])
+            ->when($request->user()?->role === 'agent', function ($query) use ($request) {
+                $query->where(function ($visible) use ($request) {
+                    $visible->where('user_id', $request->user()->id)
+                        ->orWhereHas('lead', fn ($leadQuery) => $leadQuery->where('assigned_user_id', $request->user()->id));
+                });
+            })
             ->when($request->filled('lead_id'), fn ($query) => $query->where('lead_id', $request->lead_id))
             ->when($request->filled('campaign_id'), fn ($query) => $query->where('campaign_id', $request->campaign_id))
             ->when($request->filled('user_id'), fn ($query) => $query->where('user_id', $request->user_id))
@@ -38,6 +45,7 @@ class CallController extends Controller
         ]);
 
         $lead = Lead::findOrFail($data['lead_id']);
+        abort_if(! $this->canAccessLead($request->user(), $lead), 403);
 
         $call = CallLog::create([
             'lead_id' => $lead->id,
@@ -62,6 +70,8 @@ class CallController extends Controller
 
     public function update(Request $request, CallLog $call)
     {
+        abort_if(! $this->canAccessCall($request->user(), $call), 403);
+
         $data = $request->validate([
             'status' => ['required', Rule::in(['initiated', 'ringing', 'connected', 'answered', 'not_connected', 'busy', 'no_answer', 'failed', 'missed'])],
             'answered_at' => ['nullable', 'date'],
@@ -85,9 +95,20 @@ class CallController extends Controller
 
     public function show(CallLog $call)
     {
+        abort_if(! $this->canAccessCall(request()->user(), $call), 403);
+
         return response()->json([
             'status' => true,
-            'data' => $call->load(['lead', 'campaign', 'user', 'disposition', 'leadDisposition']),
+            'data' => $call->load([
+                'lead.campaign:id,name,status',
+                'lead.assignedUser:id,name,phone_number,email',
+                'lead.phoneNumbers:id,lead_id,phone,type,is_primary',
+                'lead.propertyValues.property:id,name,slug,data_type',
+                'campaign:id,name,status',
+                'user:id,name,phone_number,email',
+                'disposition:id,name',
+                'leadDisposition',
+            ]),
         ]);
     }
 
@@ -127,7 +148,13 @@ class CallController extends Controller
     public function campaignCallLogs(Request $request, Campaign $campaign)
     {
         $calls = CallLog::where('campaign_id', $campaign->id)
-            ->with(['lead:id,name,phone', 'user:id,name', 'disposition:id,name'])
+            ->with(['lead:id,campaign_id,assigned_user_id,name,phone,email,status,last_call_at', 'user:id,name,phone_number', 'disposition:id,name'])
+            ->when($request->user()?->role === 'agent', function ($query) use ($request) {
+                $query->where(function ($visible) use ($request) {
+                    $visible->where('user_id', $request->user()->id)
+                        ->orWhereHas('lead', fn ($leadQuery) => $leadQuery->where('assigned_user_id', $request->user()->id));
+                });
+            })
             ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('started_at', '>=', $request->from))
@@ -140,8 +167,10 @@ class CallController extends Controller
 
     public function userCallLogs(Request $request, User $user)
     {
+        abort_if($request->user()?->role === 'agent' && $request->user()->id !== $user->id, 403);
+
         $calls = CallLog::where('user_id', $user->id)
-            ->with(['lead:id,name,phone', 'campaign:id,name', 'disposition:id,name'])
+            ->with(['lead:id,campaign_id,assigned_user_id,name,phone,email,status,last_call_at', 'campaign:id,name,status', 'disposition:id,name'])
             ->when($request->filled('campaign_id'), fn ($q) => $q->where('campaign_id', $request->campaign_id))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('started_at', '>=', $request->from))
@@ -150,5 +179,29 @@ class CallController extends Controller
             ->paginate($request->integer('per_page', 25));
 
         return response()->json(['status' => true, 'data' => $calls]);
+    }
+
+    private function canAccessLead($user, Lead $lead): bool
+    {
+        if (! $user) {
+            return Auth::guard('admin')->check();
+        }
+
+        if ($user->role === 'subadmin') {
+            return true;
+        }
+
+        if ($user->role === 'agent') {
+            return (int) $lead->assigned_user_id === (int) $user->id;
+        }
+
+        return false;
+    }
+
+    private function canAccessCall($user, CallLog $call): bool
+    {
+        $call->loadMissing('lead:id,assigned_user_id');
+
+        return $call->lead ? $this->canAccessLead($user, $call->lead) : false;
     }
 }

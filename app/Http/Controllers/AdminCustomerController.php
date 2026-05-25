@@ -111,10 +111,12 @@ class AdminCustomerController extends Controller
             ->whereKey($agentId)
             ->firstOrFail();
 
-        AgentCustomerAssignment::updateOrCreate(
-            ['customer_id' => $customer->id],
-            ['agent_id' => $agentId]
-        );
+        AgentCustomerAssignment::where('customer_id', $customer->id)->delete();
+
+        AgentCustomerAssignment::create([
+            'customer_id' => $customer->id,
+            'agent_id' => $agentId,
+        ]);
     }
 
     private function abortUnlessCustomer(User $customer): void

@@ -140,6 +140,126 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
         return view('admin_panel.callingcrm.settings');
     })->name('callingcrm.settings');
 
+    Route::prefix('/api/calling-crm')->group(function () {
+        Route::get('/settings/bootstrap', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'bootstrap']);
+        Route::get('/settings/profile', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'profile']);
+        Route::put('/settings/profile', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'updateProfile']);
+        Route::get('/settings/users', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'users']);
+        Route::post('/settings/users', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'storeUsers']);
+        Route::put('/settings/users/{user}', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'updateUser']);
+        Route::patch('/settings/users/{user}/status', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'updateUserStatus']);
+        Route::patch('/settings/users/{user}/password', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'updateUserPassword']);
+        Route::delete('/settings/users/{user}', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'destroyUser']);
+        Route::get('/settings/users/{user}/campaigns', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'userCampaigns']);
+        Route::get('/settings/users/{user}/reassign-campaigns', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'userReassignCampaigns']);
+        Route::get('/settings/retry-reasons', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'retryReasons']);
+        Route::post('/settings/retry-reasons', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'storeRetryReason']);
+        Route::put('/settings/retry-reasons/{retryReason}', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'updateRetryReason']);
+        Route::delete('/settings/retry-reasons/{retryReason}', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'destroyRetryReason']);
+        Route::put('/settings/retry-reasons/{retryReason}/rule', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'updateRetryRule']);
+        Route::get('/settings/lead-priority', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'leadPriorityRules']);
+        Route::put('/settings/lead-priority', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'updateLeadPriority']);
+
+        Route::get('/contact-properties', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'contactProperties']);
+        Route::post('/contact-properties', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'storeContactProperty']);
+        Route::put('/contact-properties/{property}', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'updateContactProperty']);
+        Route::patch('/contact-properties/{property}/toggle', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'toggleContactProperty']);
+        Route::delete('/contact-properties/{property}', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'destroyContactProperty']);
+
+        Route::apiResource('pipelines', \App\Http\Controllers\Api\CallingCrm\PipelineController::class);
+        Route::post('/pipelines/{pipeline}/stages', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'storeStage']);
+        Route::post('/pipelines/{pipeline}/stages/reorder', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'reorderStages']);
+        Route::put('/stages/{stage}', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'updateStage']);
+        Route::delete('/stages/{stage}', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'destroyStage']);
+        Route::put('/stages/{stage}/transitions', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'updateStageTransitions']);
+        Route::post('/stages/{stage}/tags', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'storeTag']);
+        Route::put('/stage-tags/{tag}', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'updateTag']);
+        Route::delete('/stage-tags/{tag}', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'destroyTag']);
+
+        Route::get('/teams', [\App\Http\Controllers\Api\CallingCrm\TeamsController::class, 'index']);
+        Route::post('/teams', [\App\Http\Controllers\Api\CallingCrm\TeamsController::class, 'store']);
+        Route::put('/teams/{team}', [\App\Http\Controllers\Api\CallingCrm\TeamsController::class, 'update']);
+        Route::post('/teams/{team}/members', [\App\Http\Controllers\Api\CallingCrm\TeamsController::class, 'addMembers']);
+        Route::delete('/teams/{team}/members/{user}', [\App\Http\Controllers\Api\CallingCrm\TeamsController::class, 'removeMember']);
+
+        Route::apiResource('campaigns', \App\Http\Controllers\Api\CallingCrm\CampaignController::class);
+        Route::patch('/campaigns/{campaign}/status', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'updateStatus']);
+        Route::patch('/campaigns/{campaign}/priority', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'updatePriority']);
+        Route::patch('/campaigns/{campaign}/pin', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'pin']);
+        Route::get('/campaigns/{campaign}/summary', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'summary']);
+        Route::get('/campaigns/{campaign}/lead-funnel', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'leadFunnel']);
+        Route::get('/campaigns/{campaign}/tags-summary', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'tagsSummary']);
+        Route::post('/campaigns/{campaign}/agents', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'addAgents']);
+        Route::delete('/campaigns/{campaign}/agents/{user}', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'removeAgent']);
+        Route::get('/campaigns/{campaign}/assignment-rules', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'assignmentRules']);
+        Route::post('/campaigns/{campaign}/assignment-rules', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'storeAssignmentRule']);
+        Route::put('/campaigns/{campaign}/assignment-rules/{rule}', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'updateAssignmentRule']);
+        Route::delete('/campaigns/{campaign}/assignment-rules/{rule}', [\App\Http\Controllers\Api\CallingCrm\CampaignController::class, 'destroyAssignmentRule']);
+
+        Route::get('/leads', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'index']);
+        Route::post('/leads', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'store']);
+        Route::get('/leads/{lead}', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'show']);
+        Route::put('/leads/{lead}', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'update']);
+        Route::delete('/leads/{lead}', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'destroy']);
+        Route::get('/leads/{lead}/timeline', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'timeline']);
+        Route::get('/leads/{lead}/history', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'history']);
+        Route::post('/leads/{lead}/notes', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'storeNote']);
+        Route::post('/leads/{lead}/phone-numbers', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'storePhoneNumber']);
+        Route::post('/leads/reassign', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'reassign']);
+        Route::post('/leads/claim-next', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'claimNext']);
+        Route::post('/leads/bulk/update', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'bulkUpdate']);
+        Route::post('/leads/bulk/delete', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'bulkDelete']);
+        Route::post('/leads/bulk/move', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'bulkMove']);
+        Route::post('/leads/bulk/copy', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'bulkCopy']);
+        Route::post('/leads/bulk/close', [\App\Http\Controllers\Api\CallingCrm\LeadController::class, 'bulkClose']);
+
+        Route::get('/calls', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'index']);
+        Route::post('/calls/start', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'start']);
+        Route::post('/calls/webhook', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'webhook']);
+        Route::get('/calls/{call}', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'show']);
+        Route::patch('/calls/{call}', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'update']);
+        Route::get('/campaigns/{campaign}/call-logs', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'campaignCallLogs']);
+        Route::get('/users/{user}/call-logs', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'userCallLogs']);
+
+        Route::apiResource('dispositions', \App\Http\Controllers\Api\CallingCrm\DispositionController::class)->except(['show']);
+        Route::post('/leads/{lead}/dispose', [\App\Http\Controllers\Api\CallingCrm\DispositionController::class, 'disposeLead']);
+        Route::apiResource('follow-ups', \App\Http\Controllers\Api\CallingCrm\FollowUpController::class)->except(['show']);
+        Route::patch('/follow-ups/{followUp}/complete', [\App\Http\Controllers\Api\CallingCrm\FollowUpController::class, 'complete']);
+
+        Route::get('/imports', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'index']);
+        Route::post('/campaigns/{campaign}/imports', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'store']);
+        Route::get('/imports/{import}', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'show']);
+        Route::get('/imports/{import}/rows', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'rows']);
+        Route::delete('/imports/{import}', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'destroy']);
+        Route::get('/imports/sample', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'sample']);
+
+        Route::get('/dashboard/overview', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'dashboardOverview']);
+        Route::get('/dashboard/agent-activity', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'agentActivity']);
+        Route::get('/dashboard/leads-by-stage', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'leadsByStage']);
+        Route::get('/reports/catalog', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'catalog']);
+        Route::get('/reports/user-call', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'userCallReport']);
+        Route::get('/reports/lead-disposition', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'leadDispositionReport']);
+        Route::get('/reports/follow-ups', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'followUpReport']);
+        Route::get('/reports/campaign', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'campaignReport']);
+        Route::get('/reports/login', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'loginReport']);
+        Route::get('/reports/hourly', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'hourlyReport']);
+        Route::get('/reports/day', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'dayReport']);
+        Route::post('/reports/exports', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'queueExport']);
+        Route::get('/reports/exports/{export}', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'showExport']);
+        Route::get('/trends/widgets', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'trendWidgets']);
+        Route::get('/trends/calls-vs-connected', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'callsVsConnected']);
+        Route::get('/trends/call-duration', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'callDurationTrend']);
+        Route::get('/trends/conversion-ratio', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'conversionRatioTrend']);
+        Route::get('/trends/leads-added', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'leadsAddedTrend']);
+        Route::get('/trends/lead-sources', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'leadSources']);
+        Route::get('/trends/lost-leads', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'lostLeadsTrend']);
+        Route::apiResource('saved-filters', \App\Http\Controllers\Api\CallingCrm\SavedFiltersController::class)->except(['show']);
+        Route::post('/communications/sms', [\App\Http\Controllers\Api\CallingCrm\CommunicationsController::class, 'sendSms']);
+        Route::post('/communications/email', [\App\Http\Controllers\Api\CallingCrm\CommunicationsController::class, 'sendEmail']);
+        Route::post('/communications/whatsapp', [\App\Http\Controllers\Api\CallingCrm\CommunicationsController::class, 'sendWhatsApp']);
+        Route::get('/communications', [\App\Http\Controllers\Api\CallingCrm\CommunicationsController::class, 'index']);
+    });
+
 
     //kyc maneus
     // Route::get('/kyc/pending', function () {

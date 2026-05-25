@@ -62,6 +62,7 @@ class ProcessCrmContactListImport implements ShouldQueue
                             $existingLead->update([
                                 'name' => $row['name'] ?? $row[0] ?? $existingLead->name,
                                 'email' => $row['email'] ?? $row[2] ?? $existingLead->email,
+                                'pipeline_id' => $existingLead->pipeline_id ?? $pipelineId,
                             ]);
                             $status = 'merged';
                             $leadId = $existingLead->id;

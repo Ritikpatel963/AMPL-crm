@@ -369,7 +369,9 @@
             <?php if(request()->routeIs('admin_panel.admin.callingcrm.*')): ?>
                 <?php
                     $callingCrmConfig = [
-                        'baseUrl' => url('/api/calling-crm'),
+                        'baseUrl' => auth('admin')->check()
+                            ? url('/admin_panel/admin/api/calling-crm')
+                            : url('/api/calling-crm'),
                         'csrfToken' => csrf_token(),
                         'currentUserId' => auth('admin')->check() ? null : optional(auth()->user())->id,
                     ];

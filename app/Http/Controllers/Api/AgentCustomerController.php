@@ -26,28 +26,19 @@ class AgentCustomerController extends Controller
             ->whereIn('id', function ($q) use ($agent) {
                 $q->select('customer_id')
                     ->from('agent_customer_assignments')
-                    ->where('agent_id', $agent->id);
+                    ->where('agent_id', $agent->id)
+                    ->whereIn('id', AgentCustomerAssignment::query()
+                        ->selectRaw('max(id)')
+                        ->groupBy('customer_id'));
             })
-            ->select('id', 'name', 'email')
-            ->with([
-                'sentMessages' => function ($q) use ($agent) {
-                    $q->where('receiver_id', $agent->id)
-                        ->latest()
-                        ->limit(1);
-                },
-                'receivedMessages' => function ($q) use ($agent) {
-                    $q->where('sender_id', $agent->id)
-                        ->latest()
-                        ->limit(1);
-                }
-            ])
+            ->select('id', 'name', 'email', 'phone_number')
             ->get()
             ->map(function ($customer) use ($agent) {
 
-                $latest = collect([
-                    $customer->sentMessages->first(),
-                    $customer->receivedMessages->first()
-                ])->filter()->sortByDesc('created_at')->first();
+                $latest = Message::where('sender_id', $customer->id)
+                    ->orWhere('receiver_id', $customer->id)
+                    ->latest()
+                    ->first();
 
                 $unread = Message::where('sender_id', $customer->id)
                     ->where('receiver_id', $agent->id)
@@ -67,6 +58,7 @@ class AgentCustomerController extends Controller
                     'id' => $customer->id,
                     'name' => $customer->name,
                     'email' => $customer->email,
+                    'phone_number' => $customer->phone_number,
                     'latest_message' => $latestMessageText,
                     'latest_message_time' => $latest?->created_at,
                     'unread_count' => $unread
@@ -93,7 +85,8 @@ class AgentCustomerController extends Controller
         }
 
         $relation = AgentCustomerAssignment::where('customer_id', $user->id)
-            ->orderBy('id', 'DESC')   // latest assigned agent
+            ->with('agent:id,name,email,phone_number')
+            ->latest('id')
             ->first();
 
         if (!$relation) {
@@ -106,7 +99,8 @@ class AgentCustomerController extends Controller
 
         return response()->json([
             'status' => true,
-            'agent_id' => $relation->agent_id
+            'agent_id' => $relation->agent_id,
+            'agent' => $relation->agent,
         ]);
     }
 }

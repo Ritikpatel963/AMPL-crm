@@ -16,12 +16,37 @@ class CampaignController extends Controller
 
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $campaigns = Campaign::query()
             ->with([
                 'pipeline:id,name',
                 'manager:id,name',
                 'users:id,name,email',
             ])
+            ->withCount([
+                'leads',
+                'leads as assigned_leads_count' => fn ($query) => $query
+                    ->whereNotNull('assigned_user_id')
+                    ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
+                'leads as unassigned_leads_count' => fn ($query) => $query->whereNull('assigned_user_id'),
+                'leads as uncontacted_leads_count' => fn ($query) => $query
+                    ->where('status', 'uncontacted')
+                    ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
+                'leads as in_progress_leads_count' => fn ($query) => $query
+                    ->where('status', 'in_progress')
+                    ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
+                'leads as closed_leads_count' => fn ($query) => $query
+                    ->whereIn('status', ['converted', 'lost', 'closed'])
+                    ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
+            ])
+            ->when($user?->role === 'agent', function ($query) use ($user) {
+                $query->visibleToUser($user->id)
+                    ->where(function ($q) {
+                        $q->where('status', '!=', 'paused')
+                            ->orWhere('hide_paused_from_agents', false);
+                    });
+            })
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%' . $request->search . '%'))
             ->when($request->filled('pipeline_id'), fn ($query) => $query->where('pipeline_id', $request->pipeline_id))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))

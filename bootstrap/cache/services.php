@@ -39,7 +39,8 @@
     35 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
     36 => 'Spatie\\Permission\\PermissionServiceProvider',
     37 => 'App\\Providers\\AppServiceProvider',
-    38 => 'App\\Providers\\VoltServiceProvider',
+    38 => 'App\\Providers\\BroadcastServiceProvider',
+    39 => 'App\\Providers\\VoltServiceProvider',
   ),
   'eager' => 
   array (
@@ -65,7 +66,8 @@
     19 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
     20 => 'Spatie\\Permission\\PermissionServiceProvider',
     21 => 'App\\Providers\\AppServiceProvider',
-    22 => 'App\\Providers\\VoltServiceProvider',
+    22 => 'App\\Providers\\BroadcastServiceProvider',
+    23 => 'App\\Providers\\VoltServiceProvider',
   ),
   'deferred' => 
   array (

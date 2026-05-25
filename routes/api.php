@@ -22,7 +22,6 @@ use App\Http\Controllers\Api\CallingCrm\SessionsController as CallingCrmSessions
 use App\Http\Controllers\Api\CallingCrm\SettingsController as CallingCrmSettingsController;
 use App\Http\Controllers\Api\CallingCrm\TeamsController as CallingCrmTeamsController;
 use App\Http\Controllers\Api\VendorCategoryController;
-use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 // PUBLIC ROUTE — LOGIN
@@ -39,10 +38,6 @@ Route::middleware('throttle:6,1')->group(function () {
     Route::post('/vendor/resend-otp', [VendorAuthController::class, 'resendOtp']);
 });
 
-Broadcast::routes([
-    'middleware' => ['auth:sanctum'],
-]);
-
 // PROTECTED ROUTES — REQUIRE TOKEN
 Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1'])->group(function () {
     // Customers
@@ -54,6 +49,7 @@ Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1'])->group(funct
     Route::get('/products/{id}', [ProductController::class, 'show']);
 
     // Messages
+    Route::get('/messages', [MessageController::class, 'getCurrentConversation']);
     Route::get('/messages/{user_id}', [MessageController::class, 'getMessages']);
     Route::post('/messages/seen/{user_id}', [MessageController::class, 'markAsSeen']);
     Route::get('/message/latest/{user_id}', [MessageController::class, 'getLatestMessage']);

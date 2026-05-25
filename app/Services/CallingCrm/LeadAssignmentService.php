@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class LeadAssignmentService
 {
-    public function assignLead(Lead $lead): ?int
+    public function assignLead(Lead $lead, bool $forceOnDemand = false): ?int
     {
         if ($lead->assigned_user_id) {
             return $lead->assigned_user_id;
@@ -25,6 +25,7 @@ class LeadAssignmentService
         $userId = match ($campaign->distribution) {
             'equal', 'auto_assign' => $this->nextEqualAgentId($campaign),
             'conditional' => $this->conditionalAgentId($campaign, $lead) ?? $this->nextEqualAgentId($campaign),
+            'on_demand' => $forceOnDemand ? $this->nextEqualAgentId($campaign) : null,
             default => null,
         };
 
@@ -38,9 +39,9 @@ class LeadAssignmentService
         return $userId;
     }
 
-    public function distributeUnassigned(Campaign $campaign, int $limit = 500): int
+    public function distributeUnassigned(Campaign $campaign, int $limit = 500, bool $forceOnDemand = false): int
     {
-        if ($campaign->distribution === 'on_demand') {
+        if ($campaign->distribution === 'on_demand' && ! $forceOnDemand) {
             return 0;
         }
 
@@ -52,8 +53,8 @@ class LeadAssignmentService
             ->orderBy('id')
             ->limit($limit)
             ->get()
-            ->each(function (Lead $lead) use (&$updated) {
-                if ($this->assignLead($lead)) {
+            ->each(function (Lead $lead) use (&$updated, $forceOnDemand) {
+                if ($this->assignLead($lead, $forceOnDemand)) {
                     $updated++;
                 }
             });
@@ -156,10 +157,19 @@ class LeadAssignmentService
     private function campaignAgentIds(Campaign $campaign): Collection
     {
         return $campaign->users()
-            ->wherePivot('is_active', true)
-            ->wherePivot('role', 'agent')
+            ->where(function ($query) {
+                $query->where('campaign_user.is_active', true)
+                    ->orWhereNull('campaign_user.is_active');
+            })
+            ->where(function ($query) {
+                $query->where('campaign_user.role', 'agent')
+                    ->orWhereNull('campaign_user.role');
+            })
             ->whereIn('users.role', ['agent', 'subadmin'])
-            ->where('users.lead_assignment_enabled', true)
+            ->where(function ($query) {
+                $query->where('users.lead_assignment_enabled', true)
+                    ->orWhereNull('users.lead_assignment_enabled');
+            })
             ->where(function ($query) {
                 $query->whereNull('users.crm_status')->orWhere('users.crm_status', 'active');
             })

@@ -14,6 +14,21 @@ use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
+    public function getCurrentConversation(Request $request)
+    {
+        $receiverId = $this->resolveReceiverId($request);
+
+        if (!$receiverId) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No assigned agent found for this customer.',
+                'messages' => [],
+            ], 422);
+        }
+
+        return $this->getMessages($receiverId);
+    }
+
     public function getMessages($user_id)
     {
         try {
@@ -27,26 +42,17 @@ class MessageController extends Controller
                 ], 403);
             }
 
-            $messages = Message::where(function ($query) use ($authId, $user_id) {
-                    $query->where('sender_id', $authId)
-                          ->where('receiver_id', $user_id);
-                })
-                ->orWhere(function ($query) use ($authId, $user_id) {
-                    $query->where('sender_id', $user_id)
-                          ->where('receiver_id', $authId);
-                })
+            $messages = $this->conversationQuery($authUser, (int) $user_id)
                 ->with('sender:id,name', 'receiver:id,name')
                 ->orderBy('id', 'ASC')
                 ->get();
 
-            Message::where('sender_id', $user_id)
-                ->where('receiver_id', $authId)
-                ->whereNull('seen_at')
-                ->update(['seen_at' => now()]);
+            $this->markConversationAsSeen($authUser, (int) $user_id);
 
             return response()->json([
                 'status' => true,
-                'messages' => $messages
+                'chat_user_id' => (int) $user_id,
+                'messages' => $messages->map(fn (Message $message) => $this->messagePayload($message))->values(),
             ], 200);
 
         } catch (\Throwable $e) {
@@ -62,11 +68,20 @@ class MessageController extends Controller
     public function sendMessage(Request $request)
     {
         $request->validate([
-            'receiver_id' => 'required|exists:users,id',
+            'receiver_id' => 'nullable|exists:users,id',
             'message' => 'required|string|max:5000',
         ]);
 
-        if (!$this->canMessageUser($request->user(), (int) $request->receiver_id)) {
+        $receiverId = $this->resolveReceiverId($request);
+
+        if (!$receiverId) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No assigned agent found for this customer.',
+            ], 422);
+        }
+
+        if (!$this->canMessageUser($request->user(), $receiverId)) {
             return response()->json([
                 'status' => false,
                 'message' => 'Unauthorized conversation.',
@@ -74,26 +89,21 @@ class MessageController extends Controller
         }
 
         try {
-            DB::beginTransaction();
-
             $msg = Message::create([
                 'sender_id'   => auth()->id(),
-                'receiver_id' => $request->receiver_id,
+                'receiver_id' => $receiverId,
                 'message'     => $request->message,
                 'type'        => 'text',
             ]);
 
-            broadcast(new MessageSendEvent($msg))->toOthers();
-
-            DB::commit();
+            $this->broadcastMessage($msg);
 
             return response()->json([
                 'status' => true,
-                'message' => $msg
+                'message' => $this->messagePayload($msg)
             ], 201);
 
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error('Send Message Error', ['error' => $e->getMessage()]);
 
             return response()->json([
@@ -135,13 +145,13 @@ class MessageController extends Controller
                 ],
             ]);
 
-            broadcast(new MessageSendEvent($msg))->toOthers();
-
             DB::commit();
+
+            $this->broadcastMessage($msg);
 
             return response()->json([
                 'status' => true,
-                'message' => $msg
+                'message' => $this->messagePayload($msg)
             ], 201);
 
         } catch (\Throwable $e) {
@@ -202,20 +212,13 @@ class MessageController extends Controller
                 ], 403);
             }
 
-            $message = Message::where(function ($query) use ($authUser, $user_id) {
-                    $query->where('sender_id', $authUser->id)
-                        ->where('receiver_id', $user_id);
-                })
-                ->orWhere(function ($query) use ($authUser, $user_id) {
-                    $query->where('sender_id', $user_id)
-                        ->where('receiver_id', $authUser->id);
-                })
+            $message = $this->conversationQuery($authUser, (int) $user_id)
                 ->latest()
                 ->first();
 
             return response()->json([
                 'status' => true,
-                'message' => $message,
+                'message' => $message ? $this->messagePayload($message) : null,
             ]);
         } catch (\Throwable $e) {
             Log::error('Latest Message Error', ['error' => $e->getMessage()]);
@@ -242,17 +245,111 @@ class MessageController extends Controller
         }
 
         if ($authUser->role === 'agent') {
-            return AgentCustomerAssignment::where('agent_id', $authUser->id)
-                ->where('customer_id', $otherUserId)
-                ->exists();
+            return (int) AgentCustomerAssignment::where('customer_id', $otherUserId)
+                ->latest('id')
+                ->value('agent_id') === $authUser->id;
         }
 
         if ($authUser->role === 'customer') {
-            return AgentCustomerAssignment::where('customer_id', $authUser->id)
-                ->where('agent_id', $otherUserId)
-                ->exists();
+            return (int) AgentCustomerAssignment::where('customer_id', $authUser->id)
+                ->latest('id')
+                ->value('agent_id') === $otherUserId;
         }
 
         return false;
+    }
+
+    private function resolveReceiverId(Request $request): ?int
+    {
+        if ($request->filled('receiver_id')) {
+            return (int) $request->receiver_id;
+        }
+
+        $user = $request->user();
+
+        if ($user?->role !== 'customer') {
+            return null;
+        }
+
+        return AgentCustomerAssignment::where('customer_id', $user->id)
+            ->latest('id')
+            ->value('agent_id');
+    }
+
+    private function conversationQuery(User $authUser, int $otherUserId)
+    {
+        if ($authUser->role === 'customer') {
+            return Message::where(function ($query) use ($authUser) {
+                $query->where('sender_id', $authUser->id)
+                    ->orWhere('receiver_id', $authUser->id);
+            });
+        }
+
+        $otherUser = User::find($otherUserId);
+
+        if ($otherUser?->role === 'customer') {
+            return Message::where(function ($query) use ($otherUserId) {
+                $query->where('sender_id', $otherUserId)
+                    ->orWhere('receiver_id', $otherUserId);
+            });
+        }
+
+        return Message::where(function ($query) use ($authUser, $otherUserId) {
+                $query->where('sender_id', $authUser->id)
+                    ->where('receiver_id', $otherUserId);
+            })
+            ->orWhere(function ($query) use ($authUser, $otherUserId) {
+                $query->where('sender_id', $otherUserId)
+                    ->where('receiver_id', $authUser->id);
+            });
+    }
+
+    private function markConversationAsSeen(User $authUser, int $otherUserId): void
+    {
+        if ($authUser->role === 'customer') {
+            Message::where('receiver_id', $authUser->id)
+                ->whereNull('seen_at')
+                ->update(['seen_at' => now()]);
+
+            return;
+        }
+
+        Message::where('sender_id', $otherUserId)
+            ->where('receiver_id', $authUser->id)
+            ->whereNull('seen_at')
+            ->update(['seen_at' => now()]);
+    }
+
+    private function broadcastMessage(Message $message): void
+    {
+        try {
+            broadcast(new MessageSendEvent($message))->toOthers();
+        } catch (\Throwable $e) {
+            Log::warning('Message broadcast failed after save', [
+                'message_id' => $message->id,
+                'sender_id' => $message->sender_id,
+                'receiver_id' => $message->receiver_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function messagePayload(Message $message): array
+    {
+        $message->loadMissing('sender:id,name', 'receiver:id,name');
+
+        return [
+            'id' => $message->id,
+            'sender_id' => $message->sender_id,
+            'receiver_id' => $message->receiver_id,
+            'type' => $message->type,
+            'message' => $message->message,
+            'data' => $message->data,
+            'seen_at' => $message->seen_at,
+            'sender' => $message->sender,
+            'receiver' => $message->receiver,
+            'created_at' => $message->created_at?->toDateTimeString(),
+            'created_at_formatted' => $message->created_at_formatted,
+        ];
     }
 }

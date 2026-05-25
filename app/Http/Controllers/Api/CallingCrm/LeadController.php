@@ -9,6 +9,7 @@ use App\Models\LeadPhoneNumber;
 use App\Models\TimelineEvent;
 use App\Services\CallingCrm\LeadAssignmentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -23,17 +24,24 @@ class LeadController extends Controller
                 'id', 'campaign_id', 'pipeline_id', 'assigned_user_id', 'stage_id',
                 'tag_id', 'source_id', 'name', 'phone', 'email', 'source', 'status',
                 'priority_bucket', 'deal_amount', 'currency', 'last_call_at',
-                'next_follow_up_at', 'total_disposition_count', 'created_at', 'updated_at',
+                'next_follow_up_at', 'total_disposition_count', 'metadata', 'created_at', 'updated_at',
             ])
             ->with([
-                'campaign:id,name,status',
+                'campaign:id,name,status,pipeline_id',
+                'campaign.pipeline:id,name',
                 'pipeline:id,name',
                 'stage:id,name,color,category',
                 'tag:id,name,color',
                 'assignedUser:id,name,phone_number',
                 'leadSource:id,name,code',
+                'phoneNumbers:id,lead_id,phone,type,is_primary',
+                'latestCall:call_logs.id,call_logs.lead_id,call_logs.user_id,call_logs.status,call_logs.direction,call_logs.phone_number,call_logs.duration_seconds,call_logs.ring_duration_seconds,call_logs.recording_url,call_logs.called_at,call_logs.started_at,call_logs.answered_at,call_logs.ended_at,call_logs.created_at',
+                'latestCall.user:id,name,phone_number',
                 'propertyValues' => fn ($query) => $query->select('id', 'lead_id', 'property_id', 'value')->with('property:id,name,slug,data_type'),
             ])
+            ->withCount('callLogs')
+            ->withSum('callLogs as total_call_duration_seconds', 'duration_seconds')
+            ->when($request->user()?->role === 'agent', fn ($query) => $this->applyAgentLeadVisibility($query, $request->user()))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = '%' . $request->search . '%';
                 $query->where(function ($nested) use ($search) {
@@ -52,6 +60,8 @@ class LeadController extends Controller
             ->latest()
             ->paginate($request->integer('per_page', 25));
 
+        $leads->getCollection()->transform(fn (Lead $lead) => $this->leadListPayload($lead));
+
         return response()->json(['status' => true, 'data' => $leads]);
     }
 
@@ -62,6 +72,7 @@ class LeadController extends Controller
         unset($data['properties']);
 
         $lead = DB::transaction(function () use ($data, $properties) {
+            $data = $this->applyCampaignPipeline($data);
             $lead = Lead::create($data);
             $this->syncProperties($lead, $properties);
             $this->assignmentService->assignLead($lead);
@@ -73,10 +84,12 @@ class LeadController extends Controller
             'status' => true,
             'message' => 'Lead created successfully',
             'data' => $lead->load([
-                'campaign:id,name',
+                'campaign:id,name,pipeline_id',
+                'campaign.pipeline:id,name',
                 'stage:id,name,color',
                 'tag:id,name,color',
                 'assignedUser:id,name',
+                'pipeline:id,name',
                 'propertyValues.property:id,name,slug,data_type',
             ]),
         ], 201);
@@ -84,10 +97,13 @@ class LeadController extends Controller
 
     public function show(Lead $lead)
     {
+        abort_if(! $this->canAccessLead(request()->user(), $lead), 403);
+
         return response()->json([
             'status' => true,
             'data' => $lead->load([
                 'campaign:id,name,status',
+                'campaign.pipeline:id,name',
                 'pipeline:id,name',
                 'stage:id,name,color,category',
                 'tag:id,name,color',
@@ -97,8 +113,8 @@ class LeadController extends Controller
                 'phoneNumbers:id,lead_id,phone,type,is_primary',
                 'propertyValues' => fn ($query) => $query->select('id', 'lead_id', 'property_id', 'value', 'value_text', 'value_number', 'value_date', 'value_json')->with('property:id,name,slug,data_type'),
                 'callLogs' => fn ($query) => $query
-                    ->select('id', 'lead_id', 'user_id', 'disposition_id', 'status', 'direction', 'phone_number', 'duration_seconds', 'notes', 'called_at', 'started_at', 'answered_at', 'ended_at', 'created_at')
-                    ->with(['user:id,name', 'disposition:id,name'])
+                    ->select('id', 'lead_id', 'campaign_id', 'user_id', 'disposition_id', 'status', 'direction', 'provider_call_id', 'phone_number', 'duration_seconds', 'ring_duration_seconds', 'recording_url', 'notes', 'called_at', 'started_at', 'answered_at', 'ended_at', 'created_at')
+                    ->with(['user:id,name,phone_number', 'campaign:id,name', 'disposition:id,name'])
                     ->latest('started_at')
                     ->limit(50),
                 'dispositions' => fn ($query) => $query
@@ -123,6 +139,7 @@ class LeadController extends Controller
         unset($data['properties']);
 
         DB::transaction(function () use ($lead, $data, $properties) {
+            $data = $this->applyCampaignPipeline($data, $lead);
             $lead->update($data);
 
             if (is_array($properties)) {
@@ -135,6 +152,8 @@ class LeadController extends Controller
             'message' => 'Lead updated successfully',
             'data' => $lead->fresh([
                 'campaign:id,name',
+                'campaign.pipeline:id,name',
+                'pipeline:id,name',
                 'stage:id,name,color',
                 'tag:id,name,color',
                 'assignedUser:id,name',
@@ -164,6 +183,10 @@ class LeadController extends Controller
             'campaign_id' => $data['campaign_id'] ?? null,
         ], fn ($value) => $value !== null);
 
+        if (isset($updates['campaign_id'])) {
+            $updates['pipeline_id'] = \App\Models\Campaign::whereKey($updates['campaign_id'])->value('pipeline_id');
+        }
+
         Lead::whereIn('id', $data['lead_ids'])->update($updates);
 
         return response()->json([
@@ -175,6 +198,8 @@ class LeadController extends Controller
 
     public function timeline(Lead $lead)
     {
+        abort_if(! $this->canAccessLead(request()->user(), $lead), 403);
+
         return response()->json([
             'status' => true,
             'data' => $lead->timelineEvents()
@@ -186,6 +211,8 @@ class LeadController extends Controller
 
     public function history(Lead $lead)
     {
+        abort_if(! $this->canAccessLead(request()->user(), $lead), 403);
+
         return response()->json([
             'status' => true,
             'data' => $lead->dispositions()
@@ -403,5 +430,107 @@ class LeadController extends Controller
                 ]
             );
         }
+    }
+
+    private function canAccessLead($user, Lead $lead): bool
+    {
+        if (! $user) {
+            return Auth::guard('admin')->check();
+        }
+
+        if ($user->role === 'subadmin') {
+            return true;
+        }
+
+        if ($user->role === 'agent') {
+            return (int) $lead->assigned_user_id === (int) $user->id
+                || (
+                    $lead->assigned_user_id === null
+                    && $lead->campaign()
+                        ->visibleToUser($user->id)
+                        ->where(function ($query) {
+                            $query->where('status', '!=', 'paused')
+                                ->orWhere('hide_paused_from_agents', false);
+                        })
+                        ->exists()
+                );
+        }
+
+        return false;
+    }
+
+    private function applyAgentLeadVisibility($query, $user)
+    {
+        return $query->where(function ($visible) use ($user) {
+            $visible->where('assigned_user_id', $user->id)
+                ->orWhere(function ($unassigned) use ($user) {
+                    $unassigned->whereNull('assigned_user_id')
+                        ->whereHas('campaign', function ($campaign) use ($user) {
+                            $campaign->visibleToUser($user->id)
+                                ->where(function ($query) {
+                                    $query->where('status', '!=', 'paused')
+                                        ->orWhere('hide_paused_from_agents', false);
+                                });
+                        });
+                });
+        });
+    }
+
+    private function leadListPayload(Lead $lead): array
+    {
+        $latestCall = $lead->latestCall;
+
+        return [
+            'id' => $lead->id,
+            'campaign_id' => $lead->campaign_id,
+            'pipeline_id' => $lead->pipeline_id,
+            'assigned_user_id' => $lead->assigned_user_id,
+            'stage_id' => $lead->stage_id,
+            'tag_id' => $lead->tag_id,
+            'source_id' => $lead->source_id,
+            'name' => $lead->name,
+            'phone' => $lead->phone,
+            'email' => $lead->email,
+            'source' => $lead->source,
+            'status' => $lead->status,
+            'priority_bucket' => $lead->priority_bucket,
+            'deal_amount' => $lead->deal_amount,
+            'currency' => $lead->currency,
+            'last_call_at' => $lead->last_call_at,
+            'next_follow_up_at' => $lead->next_follow_up_at,
+            'total_disposition_count' => $lead->total_disposition_count,
+            'metadata' => $lead->metadata,
+            'created_at' => $lead->created_at,
+            'updated_at' => $lead->updated_at,
+            'campaign' => $lead->campaign,
+            'pipeline' => $lead->pipeline ?: $lead->campaign?->pipeline,
+            'campaign_pipeline' => $lead->campaign?->pipeline,
+            'stage' => $lead->stage,
+            'tag' => $lead->tag,
+            'assigned_user' => $lead->assignedUser,
+            'lead_source' => $lead->leadSource,
+            'phone_numbers' => $lead->phoneNumbers,
+            'property_values' => $lead->propertyValues,
+            'call_summary' => [
+                'total_calls' => (int) ($lead->call_logs_count ?? 0),
+                'total_duration_seconds' => (int) ($lead->total_call_duration_seconds ?? 0),
+                'last_call_at' => $lead->last_call_at,
+                'latest_status' => $latestCall?->status,
+                'latest_duration_seconds' => $latestCall?->duration_seconds,
+                'latest_recording_url' => $latestCall?->recording_url,
+            ],
+            'latest_call' => $latestCall,
+        ];
+    }
+
+    private function applyCampaignPipeline(array $data, ?Lead $lead = null): array
+    {
+        $campaignId = $data['campaign_id'] ?? $lead?->campaign_id;
+
+        if ($campaignId && empty($data['pipeline_id'])) {
+            $data['pipeline_id'] = \App\Models\Campaign::whereKey($campaignId)->value('pipeline_id');
+        }
+
+        return $data;
     }
 }

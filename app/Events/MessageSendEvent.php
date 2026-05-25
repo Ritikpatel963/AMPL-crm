@@ -16,8 +16,7 @@ class MessageSendEvent implements ShouldBroadcastNow
 
     public function __construct($message)
     {
-        // Load sender relation once
-        $this->message = $message->load('sender:id,name');
+        $this->message = $message->load('sender:id,name', 'receiver:id,name');
     }
 
     public function broadcastOn(): array
@@ -47,8 +46,11 @@ class MessageSendEvent implements ShouldBroadcastNow
             'type'        => $this->message->type,
             'message'     => $this->message->message,
             'data'        => $this->message->data,
+            'seen_at'     => $this->message->seen_at,
             'sender'      => $this->message->sender,
-            'created_at_formatted'  => $this->message->created_at->toDateTimeString(),
+            'receiver'    => $this->message->receiver,
+            'created_at'  => $this->message->created_at->toDateTimeString(),
+            'created_at_formatted'  => $this->message->created_at_formatted,
         ];
     }
 }

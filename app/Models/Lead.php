@@ -107,6 +107,11 @@ class Lead extends Model
         return $this->hasMany(CallLog::class);
     }
 
+    public function latestCall()
+    {
+        return $this->hasOne(CallLog::class)->latestOfMany('started_at');
+    }
+
     public function dispositions()
     {
         return $this->hasMany(LeadDisposition::class);
