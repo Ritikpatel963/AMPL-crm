@@ -737,6 +737,9 @@
   }
 
   function bindUploadButtons() {
+    if (document.body.dataset.crmUploadBound === '1') return;
+    document.body.dataset.crmUploadBound = '1';
+
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.csv,.xls,.xlsx';
@@ -748,6 +751,10 @@
         fileInput.value = '';
         fileInput.click();
       });
+    });
+
+    document.querySelectorAll('[data-import-sample-link]').forEach(function (link) {
+      link.href = window.CallingCrmApi.baseUrl + '/imports/sample';
     });
 
     fileInput.addEventListener('change', function () {
@@ -782,6 +789,12 @@
     const pinnedCampaigns = document.querySelector('[data-crm-pinned-campaigns]');
     const pipelineOptions = document.querySelector('[data-crm-pipeline-filter-options]');
     const campaignOptions = document.querySelector('[data-crm-campaign-filter-options]');
+    const pinModal = document.querySelector('[data-pin-modal]');
+    const pinList = document.querySelector('[data-pin-list]');
+    const pinSearch = document.querySelector('[data-pin-search]');
+    const pinConfirm = document.querySelector('[data-pin-confirm]');
+    let dashboardCampaigns = [];
+    let selectedPinCampaignId = null;
 
     function stateMessage(node, message, type) {
       if (!node) return;
@@ -942,6 +955,48 @@
       }
     }
 
+    function refreshCampaignDependentUi(campaigns) {
+      dashboardCampaigns = campaigns || [];
+      renderPinnedCampaigns(dashboardCampaigns);
+      renderPinOptions(dashboardCampaigns);
+    }
+
+    function renderPinOptions(campaigns) {
+      if (!pinList) return;
+
+      const query = (pinSearch?.value || '').trim().toLowerCase();
+      const visible = (campaigns || []).filter(function (campaign) {
+        return !query || String(campaign.name || '').toLowerCase().includes(query);
+      });
+
+      if (!visible.length) {
+        pinList.innerHTML = '<div class="dashboard-state">No campaigns found.</div>';
+        selectedPinCampaignId = null;
+        return;
+      }
+
+      if (!selectedPinCampaignId || !visible.some(function (campaign) { return Number(campaign.id) === Number(selectedPinCampaignId); })) {
+        const firstUnpinned = visible.find(function (campaign) { return !campaign.is_pinned; });
+        selectedPinCampaignId = Number((firstUnpinned || visible[0]).id);
+      }
+
+      pinList.innerHTML = visible.map(function (campaign) {
+        return '<button type="button" class="pin-option' + (Number(campaign.id) === Number(selectedPinCampaignId) ? ' selected' : '') + '" data-pin-campaign-id="' + campaign.id + '">'
+          + escapeHtml(campaign.name)
+          + (campaign.is_pinned ? ' <span class="pin-state">(Pinned)</span>' : '')
+          + '</button>';
+      }).join('');
+    }
+
+    function refreshCampaignsAndFilters() {
+      return loadCampaigns().then(function (campaigns) {
+        refreshCampaignDependentUi(campaigns);
+        renderFilterChoices(state.pipelines || [], campaigns);
+        loadLeadStages();
+        return campaigns;
+      });
+    }
+
     function renderFilterChoices(pipelines, campaigns) {
       const pipelineSearch = pipelineOptions?.querySelector('.crm-search')?.outerHTML || '';
       const campaignSearch = campaignOptions?.querySelector('.crm-search')?.outerHTML || '';
@@ -983,6 +1038,33 @@
       button.addEventListener('click', loadLeadStages);
     });
 
+    pinSearch?.addEventListener('input', function () {
+      renderPinOptions(dashboardCampaigns);
+    });
+
+    pinList?.addEventListener('click', function (event) {
+      const option = event.target.closest('[data-pin-campaign-id]');
+      if (!option) return;
+      selectedPinCampaignId = Number(option.dataset.pinCampaignId);
+      renderPinOptions(dashboardCampaigns);
+    });
+
+    pinConfirm?.addEventListener('click', function () {
+      if (!selectedPinCampaignId) {
+        toast('Select a campaign to pin.', 'error');
+        return;
+      }
+
+      crm('campaigns/' + selectedPinCampaignId + '/pin', {
+        method: 'PATCH',
+        body: { is_pinned: true }
+      }).then(function () {
+        toast('Campaign pinned.');
+        pinModal?.classList.remove('open');
+        return refreshCampaignsAndFilters();
+      });
+    });
+
     loadOverview();
     loadAgentActivity();
     Promise.all([loadPipelines(), loadCampaigns(), crm('settings/users')]).then(function (results) {
@@ -991,7 +1073,7 @@
       const users = unwrap(results[2]) || [];
 
       renderFilterChoices(pipelines, campaigns);
-      renderPinnedCampaigns(campaigns);
+      refreshCampaignDependentUi(campaigns);
       loadLeadStages();
       initCreateCampaignModal(pipelines, users);
     }).catch(function () {
@@ -1275,10 +1357,7 @@
         const backdrop = document.querySelector('[data-campaign-modal]');
         if (backdrop) backdrop.classList.remove('open');
 
-        // Refresh campaigns
-        loadCampaigns().then(function (campaigns) {
-          renderPinnedCampaigns(campaigns);
-        });
+        refreshCampaignsAndFilters();
       });
     }, true);
   }
@@ -2102,6 +2181,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    bindUploadButtons();
     bindContactPage();
     hydrateDashboard();
     hydratePipeline();

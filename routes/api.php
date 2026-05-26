@@ -161,6 +161,7 @@ Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1'])->group(funct
         Route::post('/calls/start', [CallingCrmCallController::class, 'start']);
         Route::post('/calls/webhook', [CallingCrmCallController::class, 'webhook']);
         Route::get('/calls/{call}', [CallingCrmCallController::class, 'show']);
+        Route::post('/calls/{call}/recording', [CallingCrmCallController::class, 'uploadRecording']);
         Route::patch('/calls/{call}', [CallingCrmCallController::class, 'update']);
         Route::get('/campaigns/{campaign}/call-logs', [CallingCrmCallController::class, 'campaignCallLogs']);
         Route::get('/users/{user}/call-logs', [CallingCrmCallController::class, 'userCallLogs']);

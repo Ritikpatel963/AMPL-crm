@@ -295,7 +295,7 @@
       </div>
       <div class="upload-meta-row">
         <div>Max leads: 25,000 at a time, file size limit: 3MB.</div>
-        <a href="#" class="sample-link">Download Sample file</a>
+        <a href="#" class="sample-link" data-import-sample-link>Download Sample file</a>
       </div>
       <div class="upload-note">No specific column order needed! Just include crucial details like name and number in the file.</div>
     </div>
@@ -435,7 +435,7 @@
         <input type="search" placeholder="Search Campaigns" data-pin-search>
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
       </div>
-      <div class="pin-list">
+      <div class="pin-list" data-pin-list>
         <div class="pin-option">MP Raw Data</div>
         <div class="pin-option selected">MP Transacted</div>
         <div class="pin-option">SME Data</div>
@@ -444,7 +444,7 @@
       </div>
       <div class="crm-modal-footer">
         <button type="button" class="crm-modal-btn" data-pin-close>Cancel</button>
-        <button type="button" class="crm-modal-btn" data-pin-close>Confirm</button>
+        <button type="button" class="crm-modal-btn" data-pin-confirm>Confirm</button>
       </div>
     </div>
   </div>

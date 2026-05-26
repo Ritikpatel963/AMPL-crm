@@ -217,6 +217,7 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
         Route::post('/calls/start', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'start']);
         Route::post('/calls/webhook', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'webhook']);
         Route::get('/calls/{call}', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'show']);
+        Route::post('/calls/{call}/recording', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'uploadRecording']);
         Route::patch('/calls/{call}', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'update']);
         Route::get('/campaigns/{campaign}/call-logs', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'campaignCallLogs']);
         Route::get('/users/{user}/call-logs', [\App\Http\Controllers\Api\CallingCrm\CallController::class, 'userCallLogs']);

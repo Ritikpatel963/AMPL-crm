@@ -3,9 +3,11 @@
 use App\Models\AssignmentRule;
 use App\Models\Campaign;
 use App\Models\Lead;
+use App\Models\LeadStage;
 use App\Models\Pipeline;
 use App\Models\User;
 use App\Services\CallingCrm\LeadAssignmentService;
+use Laravel\Sanctum\Sanctum;
 
 function crmAgent(array $attributes = []): User
 {
@@ -128,4 +130,82 @@ it('claim next assigns on demand leads only to campaign agents', function () {
     expect($service->claimNextForUser($campaign, $outsider, 1))->toHaveCount(0);
     expect($service->claimNextForUser($campaign, $agent, 1))->toHaveCount(1);
     expect(Lead::first()->assigned_user_id)->toBe($agent->id);
+});
+
+it('can intentionally unassign leads through the reassignment api', function () {
+    $agent = crmAgent();
+    $campaign = crmCampaign('equal', [$agent]);
+    $lead = Lead::create([
+        'campaign_id' => $campaign->id,
+        'pipeline_id' => $campaign->pipeline_id,
+        'assigned_user_id' => $agent->id,
+        'name' => 'Assigned Lead',
+        'phone' => '9000000030',
+        'status' => 'uncontacted',
+    ]);
+
+    Sanctum::actingAs($agent);
+
+    $this->postJson('/api/calling-crm/leads/reassign', [
+        'lead_ids' => [$lead->id],
+        'assigned_user_id' => null,
+    ])->assertOk();
+
+    expect($lead->fresh()->assigned_user_id)->toBeNull();
+});
+
+it('rejects assigning a lead to a user outside the campaign', function () {
+    $agent = crmAgent();
+    $outsider = crmAgent();
+    $campaign = crmCampaign('equal', [$agent]);
+    $lead = Lead::create([
+        'campaign_id' => $campaign->id,
+        'pipeline_id' => $campaign->pipeline_id,
+        'name' => 'Protected Lead',
+        'phone' => '9000000031',
+        'status' => 'uncontacted',
+    ]);
+
+    Sanctum::actingAs($agent);
+
+    $this->postJson('/api/calling-crm/leads/reassign', [
+        'lead_ids' => [$lead->id],
+        'assigned_user_id' => $outsider->id,
+    ])->assertUnprocessable();
+
+    expect($lead->fresh()->assigned_user_id)->toBeNull();
+});
+
+it('keeps existing leads aligned when a campaign pipeline changes', function () {
+    $agent = crmAgent();
+    $campaign = crmCampaign('equal', [$agent]);
+    $oldStage = LeadStage::create([
+        'pipeline_id' => $campaign->pipeline_id,
+        'name' => 'Old Stage',
+        'code' => 'old_stage',
+        'category' => 'fresh',
+    ]);
+    $newPipeline = Pipeline::create(['name' => 'Renewals']);
+    $lead = Lead::create([
+        'campaign_id' => $campaign->id,
+        'pipeline_id' => $campaign->pipeline_id,
+        'stage_id' => $oldStage->id,
+        'name' => 'Pipeline Lead',
+        'phone' => '9000000032',
+        'status' => 'uncontacted',
+    ]);
+
+    Sanctum::actingAs($agent);
+
+    $this->putJson('/api/calling-crm/campaigns/' . $campaign->id, [
+        'name' => $campaign->name,
+        'pipeline_id' => $newPipeline->id,
+        'distribution' => 'equal',
+        'agent_ids' => [$agent->id],
+    ])->assertOk();
+
+    $lead->refresh();
+
+    expect($lead->pipeline_id)->toBe($newPipeline->id);
+    expect($lead->stage_id)->toBeNull();
 });

@@ -8,6 +8,7 @@ use App\Models\Campaign;
 use App\Models\Lead;
 use App\Services\CallingCrm\LeadAssignmentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CampaignController extends Controller
@@ -26,6 +27,7 @@ class CampaignController extends Controller
             ])
             ->withCount([
                 'leads',
+                'leads as total_leads_count',
                 'leads as assigned_leads_count' => fn ($query) => $query
                     ->whereNotNull('assigned_user_id')
                     ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
@@ -39,6 +41,14 @@ class CampaignController extends Controller
                 'leads as closed_leads_count' => fn ($query) => $query
                     ->whereIn('status', ['converted', 'lost', 'closed'])
                     ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
+                'callLogs as total_calls_count' => fn ($query) => $query
+                    ->when($user?->role === 'agent', fn ($q) => $q->where('user_id', $user->id)),
+                'callLogs as connected_calls_count' => fn ($query) => $query
+                    ->whereIn('status', ['connected', 'answered'])
+                    ->when($user?->role === 'agent', fn ($q) => $q->where('user_id', $user->id)),
+                'callLogs as disconnected_calls_count' => fn ($query) => $query
+                    ->whereIn('status', ['not_connected', 'busy', 'no_answer', 'failed', 'missed'])
+                    ->when($user?->role === 'agent', fn ($q) => $q->where('user_id', $user->id)),
             ])
             ->when($user?->role === 'agent', function ($query) use ($user) {
                 $query->visibleToUser($user->id)
@@ -93,13 +103,26 @@ class CampaignController extends Controller
         $agentIds = $data['agent_ids'] ?? null;
         unset($data['agent_ids']);
 
-        $campaign->update($data);
+        $oldPipelineId = $campaign->pipeline_id;
 
-        if (is_array($agentIds)) {
-            $this->syncAgents($campaign, $agentIds);
-        }
+        DB::transaction(function () use ($campaign, $data, $agentIds, $oldPipelineId) {
+            $campaign->update($data);
+
+            if ((int) $oldPipelineId !== (int) $campaign->pipeline_id) {
+                $campaign->leads()->update([
+                    'pipeline_id' => $campaign->pipeline_id,
+                    'stage_id' => null,
+                    'tag_id' => null,
+                ]);
+            }
+
+            if (is_array($agentIds)) {
+                $this->syncAgents($campaign, $agentIds);
+            }
+        });
 
         $this->assignmentService->distributeUnassigned($campaign->fresh('users'));
+        $this->assignmentService->refreshCampaignAgentCounts($campaign);
 
         return response()->json([
             'status' => true,

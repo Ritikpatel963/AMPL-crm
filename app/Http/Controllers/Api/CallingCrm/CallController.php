@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class CallController extends Controller
@@ -109,6 +110,28 @@ class CallController extends Controller
                 'disposition:id,name',
                 'leadDisposition',
             ]),
+        ]);
+    }
+
+    public function uploadRecording(Request $request, CallLog $call)
+    {
+        abort_if(! $this->canAccessCall($request->user(), $call), 403);
+
+        $data = $request->validate([
+            'recording' => ['required', 'file', 'mimes:mp3,m4a,wav,amr,3gp,3gpp', 'max:51200'],
+        ]);
+
+        $path = $data['recording']->store("calling-crm/recordings/{$call->id}", 'public');
+        $url = Storage::disk('public')->url($path);
+
+        $call->update([
+            'recording_url' => $url,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Recording uploaded successfully',
+            'data' => $call->fresh(['lead', 'campaign', 'user']),
         ]);
     }
 

@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api\CallingCrm;
 
 use App\Http\Controllers\Controller;
 use App\Models\CrmNote;
+use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\LeadPhoneNumber;
+use App\Models\LeadStage;
+use App\Models\StageTag;
 use App\Models\TimelineEvent;
 use App\Services\CallingCrm\LeadAssignmentService;
 use Illuminate\Http\Request;
@@ -134,7 +137,7 @@ class LeadController extends Controller
 
     public function update(Request $request, Lead $lead)
     {
-        $data = $this->validateLead($request, true);
+        $data = $this->validateLead($request, true, $lead);
         $properties = $data['properties'] ?? null;
         unset($data['properties']);
 
@@ -178,16 +181,38 @@ class LeadController extends Controller
             'campaign_id' => ['nullable', 'exists:campaigns,id'],
         ]);
 
-        $updates = array_filter([
-            'assigned_user_id' => $data['assigned_user_id'] ?? null,
-            'campaign_id' => $data['campaign_id'] ?? null,
-        ], fn ($value) => $value !== null);
+        $affectedCampaignIds = Lead::whereIn('id', $data['lead_ids'])
+            ->pluck('campaign_id')
+            ->filter()
+            ->all();
 
-        if (isset($updates['campaign_id'])) {
-            $updates['pipeline_id'] = \App\Models\Campaign::whereKey($updates['campaign_id'])->value('pipeline_id');
+        $updates = [];
+
+        if ($request->has('assigned_user_id')) {
+            $updates['assigned_user_id'] = $data['assigned_user_id'] ?? null;
         }
 
-        Lead::whereIn('id', $data['lead_ids'])->update($updates);
+        if ($request->filled('campaign_id')) {
+            $updates['campaign_id'] = $data['campaign_id'];
+            $updates['pipeline_id'] = Campaign::whereKey($data['campaign_id'])->value('pipeline_id');
+            $updates['stage_id'] = null;
+            $updates['tag_id'] = null;
+            $affectedCampaignIds[] = (int) $data['campaign_id'];
+        }
+
+        if (array_key_exists('assigned_user_id', $updates)) {
+            $this->assertAssignableUserForLeads(
+                $data['lead_ids'],
+                $updates['assigned_user_id'],
+                $updates['campaign_id'] ?? null
+            );
+        }
+
+        if ($updates !== []) {
+            Lead::whereIn('id', $data['lead_ids'])->update($updates);
+        }
+
+        $this->refreshAssignmentCounts($affectedCampaignIds);
 
         return response()->json([
             'status' => true,
@@ -268,7 +293,7 @@ class LeadController extends Controller
             'chunk_size' => ['sometimes', 'integer', 'min:1', 'max:25'],
         ]);
 
-        $campaign = \App\Models\Campaign::findOrFail($data['campaign_id']);
+        $campaign = Campaign::findOrFail($data['campaign_id']);
         $chunkSize = $data['chunk_size'] ?? ($campaign->lead_chunk_size ?? 10);
         $leads = $this->assignmentService->claimNextForUser($campaign, $request->user(), $chunkSize);
 
@@ -290,14 +315,30 @@ class LeadController extends Controller
             'status' => ['sometimes', Rule::in(['uncontacted', 'in_progress', 'converted', 'lost', 'closed', 'reopened'])],
         ]);
 
-        $updates = array_filter([
-            'assigned_user_id' => $data['assigned_user_id'] ?? null,
-            'stage_id' => $data['stage_id'] ?? null,
-            'tag_id' => $data['tag_id'] ?? null,
-            'status' => $data['status'] ?? null,
-        ], fn ($v) => $v !== null);
+        $updates = [];
 
-        Lead::whereIn('id', $data['lead_ids'])->update($updates);
+        foreach (['assigned_user_id', 'stage_id', 'tag_id', 'status'] as $field) {
+            if ($request->has($field)) {
+                $updates[$field] = $data[$field] ?? null;
+            }
+        }
+
+        $affectedCampaignIds = Lead::whereIn('id', $data['lead_ids'])
+            ->pluck('campaign_id')
+            ->filter()
+            ->all();
+
+        if (array_key_exists('assigned_user_id', $updates)) {
+            $this->assertAssignableUserForLeads($data['lead_ids'], $updates['assigned_user_id']);
+        }
+
+        if ($updates !== []) {
+            Lead::whereIn('id', $data['lead_ids'])->update($updates);
+        }
+
+        if (array_key_exists('assigned_user_id', $updates)) {
+            $this->refreshAssignmentCounts($affectedCampaignIds);
+        }
 
         return response()->json([
             'status' => true,
@@ -314,13 +355,23 @@ class LeadController extends Controller
             'campaign_id' => ['required', 'exists:campaigns,id'],
         ]);
 
-        $campaign = \App\Models\Campaign::findOrFail($data['campaign_id']);
+        $campaign = Campaign::findOrFail($data['campaign_id']);
+        $affectedCampaignIds = Lead::whereIn('id', $data['lead_ids'])
+            ->pluck('campaign_id')
+            ->filter()
+            ->all();
 
         Lead::whereIn('id', $data['lead_ids'])
             ->update([
                 'campaign_id' => $campaign->id,
                 'pipeline_id' => $campaign->pipeline_id,
+                'stage_id' => null,
+                'tag_id' => null,
+                'assigned_user_id' => null,
             ]);
+
+        $this->assignmentService->distributeUnassigned($campaign->fresh('users'));
+        $this->refreshAssignmentCounts(array_merge($affectedCampaignIds, [$campaign->id]));
 
         return response()->json([
             'status' => true,
@@ -337,7 +388,7 @@ class LeadController extends Controller
             'campaign_id' => ['required', 'exists:campaigns,id'],
         ]);
 
-        $campaign = \App\Models\Campaign::findOrFail($data['campaign_id']);
+        $campaign = Campaign::findOrFail($data['campaign_id']);
 
         $leads = Lead::whereIn('id', $data['lead_ids'])->get();
 
@@ -346,9 +397,15 @@ class LeadController extends Controller
             $newLead = $lead->replicate();
             $newLead->campaign_id = $campaign->id;
             $newLead->pipeline_id = $campaign->pipeline_id;
+            $newLead->stage_id = null;
+            $newLead->tag_id = null;
+            $newLead->assigned_user_id = null;
             $newLead->save();
+            $this->assignmentService->assignLead($newLead);
             $copied++;
         }
+
+        $this->assignmentService->refreshCampaignAgentCounts($campaign);
 
         return response()->json([
             'status' => true,
@@ -380,7 +437,29 @@ class LeadController extends Controller
         ]);
     }
 
-    private function validateLead(Request $request, bool $partial = false): array
+    public function bulkDelete(Request $request)
+    {
+        $data = $request->validate([
+            'lead_ids' => ['required', 'array', 'min:1'],
+            'lead_ids.*' => ['exists:leads,id'],
+        ]);
+
+        $affectedCampaignIds = Lead::whereIn('id', $data['lead_ids'])
+            ->pluck('campaign_id')
+            ->filter()
+            ->all();
+
+        Lead::whereIn('id', $data['lead_ids'])->delete();
+        $this->refreshAssignmentCounts($affectedCampaignIds);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Leads deleted successfully',
+            'data' => ['deleted' => count($data['lead_ids'])],
+        ]);
+    }
+
+    private function validateLead(Request $request, bool $partial = false, ?Lead $lead = null): array
     {
         $required = $partial ? 'sometimes' : 'required';
 
@@ -391,7 +470,7 @@ class LeadController extends Controller
             }
         }
 
-        return $request->validate([
+        $data = $request->validate([
             'campaign_id' => [$required, 'exists:campaigns,id'],
             'pipeline_id' => ['nullable', 'exists:pipelines,id'],
             'user_id' => ['nullable', 'exists:users,id'],
@@ -401,7 +480,7 @@ class LeadController extends Controller
             'source_id' => ['nullable', 'exists:lead_sources,id'],
             'contact_list_id' => ['nullable', 'exists:contact_lists,id'],
             'name' => ['nullable', 'string', 'max:180'],
-            'phone' => [$required, 'string', 'max:20'],
+            'phone' => [$required, 'string', 'max:20', Rule::unique('leads', 'phone')->ignore($lead?->id)],
             'email' => ['nullable', 'email', 'max:180'],
             'source' => ['sometimes', Rule::in(['FILE_UPLOAD', 'WALK_IN_LEAD', 'INCOMING_IVR', 'WORKFLOW', 'GOOGLE_SHEET', 'MANUAL', 'API', 'WEBHOOK'])],
             'tags' => ['nullable', 'array'],
@@ -415,6 +494,8 @@ class LeadController extends Controller
             'metadata' => ['nullable', 'array'],
             'properties' => ['nullable', 'array'],
         ]);
+
+        return $this->validateLeadPipelineState($data, $lead);
     }
 
     private function syncProperties(Lead $lead, array $properties): void
@@ -527,10 +608,105 @@ class LeadController extends Controller
     {
         $campaignId = $data['campaign_id'] ?? $lead?->campaign_id;
 
-        if ($campaignId && empty($data['pipeline_id'])) {
-            $data['pipeline_id'] = \App\Models\Campaign::whereKey($campaignId)->value('pipeline_id');
+        if ($campaignId) {
+            $data['pipeline_id'] = Campaign::whereKey($campaignId)->value('pipeline_id');
         }
 
         return $data;
+    }
+
+    private function validateLeadPipelineState(array $data, ?Lead $lead = null): array
+    {
+        $campaignId = $data['campaign_id'] ?? $lead?->campaign_id;
+        $pipelineId = $data['pipeline_id'] ?? null;
+
+        if ($campaignId) {
+            $pipelineId = Campaign::whereKey($campaignId)->value('pipeline_id');
+        }
+
+        if (isset($data['stage_id']) && $data['stage_id'] && $pipelineId) {
+            abort_unless(
+                LeadStage::whereKey($data['stage_id'])->where('pipeline_id', $pipelineId)->exists(),
+                422,
+                'Selected stage does not belong to the lead pipeline.'
+            );
+        }
+
+        if (isset($data['tag_id']) && $data['tag_id']) {
+            $tagQuery = StageTag::whereKey($data['tag_id']);
+
+            if ($pipelineId) {
+                $tagQuery->whereHas('stage', fn ($query) => $query->where('pipeline_id', $pipelineId));
+            }
+
+            abort_unless($tagQuery->exists(), 422, 'Selected tag does not belong to the lead pipeline.');
+        }
+
+        if (isset($data['assigned_user_id']) && $data['assigned_user_id'] && $campaignId) {
+            abort_unless(
+                $this->campaignCanAssignUser((int) $campaignId, (int) $data['assigned_user_id']),
+                422,
+                'Selected user is not an active agent on the selected campaign.'
+            );
+        }
+
+        return $data;
+    }
+
+    private function refreshAssignmentCounts(array $campaignIds): void
+    {
+        Campaign::whereIn('id', array_unique(array_filter($campaignIds)))
+            ->get()
+            ->each(fn (Campaign $campaign) => $this->assignmentService->refreshCampaignAgentCounts($campaign));
+    }
+
+    private function assertAssignableUserForLeads(array $leadIds, ?int $userId, ?int $targetCampaignId = null): void
+    {
+        if (! $userId) {
+            return;
+        }
+
+        $campaignIds = $targetCampaignId
+            ? collect([(int) $targetCampaignId])
+            : Lead::whereIn('id', $leadIds)->pluck('campaign_id')->unique()->values();
+
+        $validCampaignCount = Campaign::whereIn('id', $campaignIds)
+            ->whereHas('users', function ($query) use ($userId) {
+                $query->where('users.id', $userId)
+                    ->whereIn('users.role', ['agent', 'subadmin'])
+                    ->where(function ($active) {
+                        $active->where('campaign_user.is_active', true)
+                            ->orWhereNull('campaign_user.is_active');
+                    })
+                    ->where(function ($role) {
+                        $role->where('campaign_user.role', 'agent')
+                            ->orWhereNull('campaign_user.role');
+                    });
+            })
+            ->count();
+
+        abort_unless(
+            $validCampaignCount === $campaignIds->count(),
+            422,
+            'Selected user is not an active agent on every selected campaign.'
+        );
+    }
+
+    private function campaignCanAssignUser(int $campaignId, int $userId): bool
+    {
+        return Campaign::whereKey($campaignId)
+            ->whereHas('users', function ($query) use ($userId) {
+                $query->where('users.id', $userId)
+                    ->whereIn('users.role', ['agent', 'subadmin'])
+                    ->where(function ($active) {
+                        $active->where('campaign_user.is_active', true)
+                            ->orWhereNull('campaign_user.is_active');
+                    })
+                    ->where(function ($role) {
+                        $role->where('campaign_user.role', 'agent')
+                            ->orWhereNull('campaign_user.role');
+                    });
+            })
+            ->exists();
     }
 }
