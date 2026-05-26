@@ -374,11 +374,11 @@
             <div>Assigns leads based on set conditions, ensuring the right leads go to the right agents.</div>
           </div>
         </div>
-        <button type="button" class="additional-settings" id="campaignAdditionalSettingsBtn">
+        <button type="button" class="additional-settings" id="campaignAdditionalSettingsBtn" aria-expanded="false" aria-controls="campaignAdditionalSettingsContent">
           <span class="additional-settings-title">Additional Settings <span class="additional-info">i</span></span>
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-        <div class="additional-settings-content" id="campaignAdditionalSettingsContent" style="display: none; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: #fbf7ff; margin-bottom: 16px;">
+        <div class="additional-settings-content" id="campaignAdditionalSettingsContent" hidden style="display: none; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: #fbf7ff; margin-bottom: 16px;">
           <div class="campaign-grid">
             <div class="campaign-field">
               <label>Priority</label>

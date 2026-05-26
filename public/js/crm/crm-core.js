@@ -949,7 +949,11 @@
       const pinned = campaigns.filter(function (campaign) { return campaign.is_pinned; }).slice(0, 5);
       if (!pinned.length) {
         if (pinnedCampaigns) {
-          pinnedCampaigns.innerHTML = '<div class="pinned-empty-icon">📌</div>You currently have no pinned campaigns as of now.';
+          pinnedCampaigns.innerHTML = '<div class="pinned-empty-state">'
+            + '<div class="pinned-empty-icon"><i class="fa-solid fa-thumbtack"></i></div>'
+            + '<div class="pinned-empty-copy"><strong>No pinned campaigns yet</strong>'
+            + '<span>Use the plus button to pin campaigns you want to monitor here.</span></div>'
+            + '</div>';
           pinnedCampaigns.classList.add('pinned-empty');
           pinnedCampaigns.classList.remove('pinned-list');
         }
@@ -993,8 +997,9 @@
 
       pinList.innerHTML = visible.map(function (campaign) {
         return '<button type="button" class="pin-option' + (Number(campaign.id) === Number(selectedPinCampaignId) ? ' selected' : '') + '" data-pin-campaign-id="' + campaign.id + '">'
-          + escapeHtml(campaign.name)
-          + (campaign.is_pinned ? ' <span class="pin-state">(Pinned)</span>' : '')
+          + '<span class="pin-option-radio"></span>'
+          + '<span class="pin-option-name">' + escapeHtml(campaign.name) + '</span>'
+          + (campaign.is_pinned ? '<span class="pin-state">Pinned</span>' : '')
           + '</button>';
       }).join('');
     }
@@ -1135,6 +1140,7 @@
     const prioritySelect = document.getElementById('campaignPrioritySelect');
     const duplicacyScope = document.getElementById('campaignDuplicacyScope');
     const duplicacyAction = document.getElementById('campaignDuplicacyAction');
+    const campaignBackdrop = document.querySelector('[data-campaign-modal]');
     const conditionsModal = document.querySelector('[data-conditions-modal]');
     const conditionsForm = document.getElementById('campaignConditionsForm');
     const conditionSeedInput = document.getElementById('conditionFieldSeed');
@@ -1216,16 +1222,16 @@
 
     function openConditionsModal() {
       populateConditionSelects();
-      if (campaignModal) {
-        campaignModal.classList.add('conditions-active');
+      if (campaignBackdrop) {
+        campaignBackdrop.classList.add('conditions-active');
       }
       conditionsModal?.classList.add('open');
     }
 
     function closeConditionsModal() {
       conditionsModal?.classList.remove('open');
-      if (campaignModal) {
-        campaignModal.classList.remove('conditions-active');
+      if (campaignBackdrop) {
+        campaignBackdrop.classList.remove('conditions-active');
       }
     }
 
@@ -1261,8 +1267,14 @@
         });
 
         // Toggle additional settings back to collapsed
-        if (addSettingsContent) addSettingsContent.style.display = 'none';
-        if (addSettingsBtn) addSettingsBtn.classList.remove('expanded');
+        if (addSettingsContent) {
+          addSettingsContent.hidden = true;
+          addSettingsContent.style.display = 'none';
+        }
+        if (addSettingsBtn) {
+          addSettingsBtn.classList.remove('expanded');
+          addSettingsBtn.setAttribute('aria-expanded', 'false');
+        }
 
         if (prioritySelect) prioritySelect.value = 'medium';
         if (duplicacyScope) duplicacyScope.value = 'campaign';
@@ -1508,12 +1520,16 @@
 
     // 10. Additional Settings expand panel
     if (addSettingsBtn && addSettingsContent) {
+      addSettingsContent.hidden = addSettingsContent.style.display === 'none';
+      addSettingsBtn.setAttribute('aria-expanded', addSettingsContent.hidden ? 'false' : 'true');
       addSettingsBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        e.stopPropagation();
-        const expanded = addSettingsContent.style.display === 'block';
-        addSettingsContent.style.display = expanded ? 'none' : 'block';
-        addSettingsBtn.classList.toggle('expanded', !expanded);
+        e.stopImmediatePropagation();
+        const willOpen = addSettingsContent.hidden || addSettingsContent.style.display === 'none';
+        addSettingsContent.hidden = !willOpen;
+        addSettingsContent.style.display = willOpen ? 'block' : 'none';
+        addSettingsBtn.classList.toggle('expanded', willOpen);
+        addSettingsBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
       });
     }
 
@@ -1576,8 +1592,7 @@
 
         return Promise.all(ruleRequests).then(function () {
           toast('Campaign created successfully.');
-          const backdrop = document.querySelector('[data-campaign-modal]');
-          if (backdrop) backdrop.classList.remove('open');
+        if (campaignBackdrop) campaignBackdrop.classList.remove('open');
           if (typeof afterCreateRefresh === 'function') {
             afterCreateRefresh();
           } else {
@@ -2421,3 +2436,4 @@
     toast: toast
   };
 })();
+
