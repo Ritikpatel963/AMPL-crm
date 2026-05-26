@@ -132,6 +132,26 @@ it('claim next assigns on demand leads only to campaign agents', function () {
     expect(Lead::first()->assigned_user_id)->toBe($agent->id);
 });
 
+it('claim next trusts explicit campaign agents even when a manager is set', function () {
+    $manager = crmAgent(['role' => 'subadmin']);
+    $agent = crmAgent(['reporting_manager_id' => null]);
+    $campaign = crmCampaign('on_demand', [$agent]);
+    $campaign->update(['manager_id' => $manager->id]);
+
+    Lead::create([
+        'campaign_id' => $campaign->id,
+        'pipeline_id' => $campaign->pipeline_id,
+        'name' => 'Managed Campaign Lead',
+        'phone' => '9000000021',
+        'status' => 'uncontacted',
+    ]);
+
+    $claimed = app(LeadAssignmentService::class)->claimNextForUser($campaign->fresh('users'), $agent, 1);
+
+    expect($claimed)->toHaveCount(1);
+    expect(Lead::first()->assigned_user_id)->toBe($agent->id);
+});
+
 it('can intentionally unassign leads through the reassignment api', function () {
     $agent = crmAgent();
     $campaign = crmCampaign('equal', [$agent]);

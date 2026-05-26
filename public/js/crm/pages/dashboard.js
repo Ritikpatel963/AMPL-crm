@@ -17,6 +17,7 @@ function closeFilter(filter) {
     popover.style.removeProperty('top');
     popover.style.removeProperty('left');
     popover.style.removeProperty('width');
+    popover.style.removeProperty('display');
     if (filter._popoverParent && popover.parentElement !== filter._popoverParent) {
       filter._popoverParent.appendChild(popover);
     }
@@ -29,6 +30,9 @@ function closeFilter(filter) {
   }
   if (activeFilter === filter) {
     activeFilter = null;
+  }
+  if (popoverLayer && !document.querySelector('[data-filter].open')) {
+    popoverLayer.classList.remove('active');
   }
 }
 
@@ -79,6 +83,8 @@ document.querySelectorAll('[data-filter-toggle]').forEach(function (button) {
       filter._popoverParent = popover.parentElement;
       filter._activePopover = popover;
       popoverLayer.appendChild(popover);
+      popoverLayer.classList.add('active');
+      popover.style.display = 'block';
     }
 
     filter.classList.add('open');
@@ -93,21 +99,34 @@ document.querySelectorAll('[data-filter-toggle]').forEach(function (button) {
 
 document.querySelectorAll('[data-filter-apply]').forEach(function (button) {
   button.addEventListener('click', function () {
-    const filter = activeFilter;
+    var filter = activeFilter;
     if (!filter) {
       return;
     }
-    const label = filter.querySelector('[data-filter-label]');
-    const popover = filter._activePopover || filter.querySelector('.crm-popover');
-    const checkedBoxes = Array.from(popover.querySelectorAll('input[type="checkbox"]:checked'))
+    var label = filter.querySelector('[data-filter-label]');
+    var popover = filter._activePopover || filter.querySelector('.crm-popover');
+    var checkedBoxes = Array.from(popover.querySelectorAll('input[type="checkbox"]:checked'))
       .map(function (input) { return input.value; })
-      .filter(function (value) { return value !== 'Select all'; });
-    const checkedRadio = popover.querySelector('input[type="radio"]:checked');
+      .filter(function (value) { return value !== 'all'; });
+    var checkedRadio = popover.querySelector('input[type="radio"]:checked');
+    var hasCheckboxes = popover.querySelectorAll('input[type="checkbox"]').length > 0;
 
-    if (checkedBoxes.length) {
-      label.textContent = checkedBoxes.length === 1 ? checkedBoxes[0] : checkedBoxes.length + ' selected';
+    if (hasCheckboxes) {
+      if (checkedBoxes.length === 0) {
+        label.textContent = 'Campaign';
+        filter.querySelector('[data-filter-toggle]').classList.remove('applied');
+      } else if (checkedBoxes.length === 1) {
+        var checkedInput = popover.querySelector('input[type="checkbox"][value="' + checkedBoxes[0] + '"]');
+        var choiceLabel = checkedInput?.closest('.crm-choice')?.querySelector('span:last-child');
+        label.textContent = choiceLabel ? choiceLabel.textContent.trim() : checkedBoxes[0];
+        filter.querySelector('[data-filter-toggle]').classList.add('applied');
+      } else {
+        label.textContent = checkedBoxes.length + ' selected';
+        filter.querySelector('[data-filter-toggle]').classList.add('applied');
+      }
     } else if (checkedRadio) {
       label.textContent = checkedRadio.closest('.crm-choice')?.textContent.trim() || checkedRadio.value;
+      filter.querySelector('[data-filter-toggle]').classList.add('applied');
     }
 
     closeFilter(filter);
@@ -138,15 +157,7 @@ document.querySelectorAll('.crm-search').forEach(function (input) {
   });
 });
 
-const campaignSelectAll = document.querySelector('input[value="Select all"]');
-if (campaignSelectAll) {
-  campaignSelectAll.addEventListener('change', function () {
-    const popover = campaignSelectAll.closest('.crm-popover');
-    popover.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
-      checkbox.checked = campaignSelectAll.checked;
-    });
-  });
-}
+// Note: Campaign "Select all" checkbox is handled in crm-core.js renderFilterChoices()
 
 const pinModal = document.querySelector('[data-pin-modal]');
 const openPinModal = document.querySelector('[data-pin-open]');
@@ -157,6 +168,8 @@ const closeUploadButtons = document.querySelectorAll('[data-upload-close]');
 const campaignModal = document.querySelector('[data-campaign-modal]');
 const openCampaignModal = document.querySelector('[data-campaign-open]');
 const closeCampaignButtons = document.querySelectorAll('[data-campaign-close]');
+const conditionsModal = document.querySelector('[data-conditions-modal]');
+const closeConditionsButtons = document.querySelectorAll('[data-conditions-close]');
 
 function bindModal(modal, openButton, closeButtons) {
   if (modal && openButton) {
@@ -182,6 +195,7 @@ function bindModal(modal, openButton, closeButtons) {
 
 bindModal(uploadModal, openUploadModal, closeUploadButtons);
 bindModal(campaignModal, openCampaignModal, closeCampaignButtons);
+bindModal(conditionsModal, null, closeConditionsButtons);
 
 if (pinModal && openPinModal) {
   openPinModal.addEventListener('click', function () {

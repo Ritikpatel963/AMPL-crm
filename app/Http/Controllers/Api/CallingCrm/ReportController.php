@@ -84,7 +84,11 @@ class ReportController extends Controller
             ->select('stage_id', DB::raw('count(*) as total'))
             ->with('stage:id,name,color')
             ->when($request->filled('pipeline_id'), fn ($query) => $query->where('pipeline_id', $request->pipeline_id))
-            ->when($request->filled('campaign_id'), fn ($query) => $query->where('campaign_id', $request->campaign_id))
+            ->when($request->filled('campaign_ids'), function ($query) use ($request) {
+                $ids = is_array($request->campaign_ids) ? $request->campaign_ids : explode(',', $request->campaign_ids);
+                $query->whereIn('campaign_id', array_filter($ids));
+            })
+            ->when(!$request->filled('campaign_ids') && $request->filled('campaign_id'), fn ($query) => $query->where('campaign_id', $request->campaign_id))
             ->groupBy('stage_id')
             ->get();
 

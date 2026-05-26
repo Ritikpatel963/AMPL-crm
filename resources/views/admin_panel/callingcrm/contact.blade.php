@@ -167,10 +167,6 @@
         <div class="crm-modal-head">
           <div class="modal-title-wrap">
             <div class="crm-modal-title" id="contactUploadExcelTitle">Upload Excel Sheet</div>
-            <div class="learn-more-pill">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9z"/></svg>
-              Learn More
-            </div>
           </div>
           <button type="button" class="crm-modal-close" data-upload-close aria-label="Close">&times;</button>
         </div>
@@ -195,10 +191,6 @@
         <div class="crm-modal-head">
           <div class="modal-title-wrap">
             <div class="crm-modal-title" id="addLeadTitle">Add Lead</div>
-            <div class="learn-more-pill">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9z"/></svg>
-              Learn More
-            </div>
           </div>
           <button type="button" class="crm-modal-close" data-lead-close aria-label="Close">&times;</button>
         </div>

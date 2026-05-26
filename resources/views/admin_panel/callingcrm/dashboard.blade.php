@@ -22,22 +22,28 @@
         <span class="card-title">Call Overview</span>
         <div class="card-actions">
           <div class="crm-filter" data-filter>
-            <button type="button" class="date-filter" data-filter-toggle>
+            <button type="button" class="date-filter applied" data-filter-toggle>
               <span class="crm-filter-label" data-filter-label>Last 7 Days</span>
               <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
             </button>
-            <div class="crm-popover">
-              <div class="crm-popover-title">Choose Date</div>
-              <div class="crm-popover-body">
-                <label class="crm-choice"><input type="radio" name="dashboard_date" value="This Month"><span class="crm-radio"></span><span>This Month</span></label>
-                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Yesterday"><span class="crm-radio"></span><span>Yesterday</span></label>
-                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Today"><span class="crm-radio"></span><span>Today</span></label>
-                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Last 7 Days" checked><span class="crm-radio"></span><span>Last 7 days</span></label>
-                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Last 30 Days"><span class="crm-radio"></span><span>Last 30 days</span></label>
-                <label class="crm-choice"><input type="radio" name="dashboard_date" value="Custom Range"><span class="crm-radio"></span><span>Custom Range</span></label>
-              </div>
-              <div class="crm-popover-footer">
-                <button type="button" class="crm-apply-btn" data-filter-apply>Apply</button>
+            <div class="crm-popover crm-filter-menu">
+              <div class="filter-wrapper">
+                <div class="sticky-container">
+                  <div class="crm-popover-title heading-title">Choose Date</div>
+                  <div class="line"></div>
+                  <div class="crm-popover-body content">
+                    <label class="crm-choice"><input type="radio" name="dashboard_date" value="This Month"><span class="crm-radio"></span><span>This Month</span></label>
+                    <label class="crm-choice"><input type="radio" name="dashboard_date" value="Yesterday"><span class="crm-radio"></span><span>Yesterday</span></label>
+                    <label class="crm-choice"><input type="radio" name="dashboard_date" value="Today"><span class="crm-radio"></span><span>Today</span></label>
+                    <label class="crm-choice"><input type="radio" name="dashboard_date" value="Last 7 Days" checked><span class="crm-radio"></span><span>Last 7 days</span></label>
+                    <label class="crm-choice"><input type="radio" name="dashboard_date" value="Last 30 Days"><span class="crm-radio"></span><span>Last 30 days</span></label>
+                    <label class="crm-choice"><input type="radio" name="dashboard_date" value="Custom Range"><span class="crm-radio"></span><span>Custom Range</span></label>
+                  </div>
+                  <div class="line mt-10"></div>
+                </div>
+                <div class="crm-popover-footer footer">
+                  <button type="button" class="crm-apply-btn primary-btn-popup" data-filter-apply>Apply</button>
+                </div>
               </div>
             </div>
           </div>
@@ -123,18 +129,24 @@
         <span class="card-title">Leads by Stage</span>
         <div class="leads-filters">
           <div class="crm-filter" data-filter>
-            <button type="button" class="date-filter" data-filter-toggle>
+            <button type="button" class="date-filter applied" data-filter-toggle>
               <span class="crm-filter-label" data-filter-label><span class="skeleton-loader" style="width: 70px; height: 12px; border-radius: 3px;"></span></span>
               <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
             </button>
-            <div class="crm-popover popover-left">
-              <div class="crm-popover-title">Choose Pipeline</div>
-              <div class="crm-popover-body" data-crm-pipeline-filter-options>
-                <input type="search" class="crm-search" placeholder="Search">
-                <div class="dashboard-state">Loading pipelines...</div>
-              </div>
-              <div class="crm-popover-footer">
-                <button type="button" class="crm-apply-btn" data-filter-apply>Apply</button>
+            <div class="crm-popover crm-filter-menu popover-left">
+              <div class="filter-wrapper">
+                <div class="sticky-container">
+                  <div class="crm-popover-title heading-title">Choose Pipeline</div>
+                  <div class="line"></div>
+                  <div class="crm-popover-body content" data-crm-pipeline-filter-options>
+                    <input type="search" class="crm-search search-input" placeholder="Search">
+                    <div class="dashboard-state">Loading pipelines...</div>
+                  </div>
+                  <div class="line mt-10"></div>
+                </div>
+                <div class="crm-popover-footer footer">
+                  <button type="button" class="crm-apply-btn primary-btn-popup" data-filter-apply>Apply</button>
+                </div>
               </div>
             </div>
           </div>
@@ -143,14 +155,20 @@
               <span class="crm-filter-label" data-filter-label><span class="skeleton-loader" style="width: 60px; height: 12px; border-radius: 3px;"></span></span>
               <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
             </button>
-            <div class="crm-popover">
-              <div class="crm-popover-title">Choose Campaign</div>
-              <div class="crm-popover-body" data-crm-campaign-filter-options>
-                <input type="search" class="crm-search" placeholder="Search">
-                <div class="dashboard-state">Loading campaigns...</div>
-              </div>
-              <div class="crm-popover-footer">
-                <button type="button" class="crm-apply-btn" data-filter-apply>Apply</button>
+            <div class="crm-popover crm-filter-menu">
+              <div class="filter-wrapper">
+                <div class="sticky-container">
+                  <div class="crm-popover-title heading-title">Choose Campaign</div>
+                  <div class="line"></div>
+                  <div class="crm-popover-body filter-list-wrapper content" data-crm-campaign-filter-options>
+                    <input type="search" class="crm-search search-input" placeholder="Search">
+                    <div class="dashboard-state">Loading campaigns...</div>
+                  </div>
+                  <div class="line mt-10"></div>
+                </div>
+                <div class="crm-popover-footer footer">
+                  <button type="button" class="crm-apply-btn primary-btn-popup" data-filter-apply>Apply</button>
+                </div>
               </div>
             </div>
           </div>
@@ -278,10 +296,6 @@
       <div class="crm-modal-head">
         <div class="modal-title-wrap">
           <div class="crm-modal-title" id="uploadExcelTitle">Upload Excel Sheet</div>
-          <div class="learn-more-pill">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9z"/></svg>
-            Learn More
-          </div>
         </div>
         <button type="button" class="crm-modal-close" data-upload-close aria-label="Close">&times;</button>
       </div>
@@ -306,10 +320,6 @@
       <div class="crm-modal-head">
         <div class="modal-title-wrap">
           <div class="crm-modal-title" id="createCampaignTitle">Create Campaign</div>
-          <div class="learn-more-pill">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9z"/></svg>
-            Learn More
-          </div>
         </div>
         <button type="button" class="crm-modal-close" data-campaign-close aria-label="Close">&times;</button>
       </div>
@@ -420,6 +430,58 @@
         </div>
         <div class="campaign-create-row">
           <button type="submit" class="campaign-create-btn" id="campaignSubmitBtn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="crm-modal-backdrop" data-conditions-modal>
+    <div class="crm-modal crm-conditions-modal" role="dialog" aria-modal="true" aria-labelledby="setConditionsTitle">
+      <div class="crm-modal-head">
+        <div class="modal-title-wrap">
+          <div class="crm-modal-title" id="setConditionsTitle">Set Conditions</div>
+        </div>
+        <button type="button" class="crm-modal-close" data-conditions-close aria-label="Close">&times;</button>
+      </div>
+
+      <form class="conditions-form" id="campaignConditionsForm" novalidate>
+        <div class="conditions-body">
+          <div class="conditions-row conditions-row-head">
+            <label>If lead has data:</label>
+            <input type="text" class="conditions-input" id="conditionFieldSeed" placeholder="Ex. Name,City.">
+            <button type="button" class="conditions-add-circle" id="conditionSeedAdd" aria-label="Add condition">+</button>
+          </div>
+
+          <div class="conditions-rule-list" id="conditionsRuleList">
+            <div class="conditions-row conditions-rule" data-condition-rule>
+              <label>Option 1</label>
+              <input type="text" class="conditions-input" data-condition-field placeholder="Ex. Name,City.">
+              <span class="conditions-then">then assign lead to<br>User:</span>
+              <div class="conditions-select-wrap">
+                <select class="conditions-input" data-condition-user>
+                  <option value="">Choose User</option>
+                </select>
+              </div>
+              <button type="button" class="conditions-delete" data-condition-remove aria-label="Remove condition">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="button" class="conditions-add-btn" id="conditionsAddRule">Add another</button>
+        </div>
+
+        <div class="conditions-footer">
+          <label>Otherwise assign lead to</label>
+          <div class="conditions-select-wrap">
+            <select class="conditions-input" id="conditionsFallbackUser">
+              <option value="">Choose User</option>
+            </select>
+          </div>
+          <div class="conditions-actions">
+            <button type="button" class="conditions-secondary" data-conditions-close>Cancel</button>
+            <button type="submit" class="conditions-primary">Submit</button>
+          </div>
         </div>
       </form>
     </div>

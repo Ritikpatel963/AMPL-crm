@@ -70,6 +70,18 @@ class LeadController extends Controller
 
     public function store(Request $request)
     {
+        // Fix for frontend sending name and phone backwards
+        if ($request->has('name') && $request->has('phone')) {
+            $name = $request->input('name');
+            $phone = $request->input('phone');
+            if (preg_match('/^[0-9\+\-\(\)\s]+$/', $name) && preg_match('/[a-zA-Z]/', $phone)) {
+                $request->merge([
+                    'name' => $phone,
+                    'phone' => $name,
+                ]);
+            }
+        }
+
         $data = $this->validateLead($request);
         $properties = $data['properties'] ?? [];
         unset($data['properties']);

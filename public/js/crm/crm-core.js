@@ -900,9 +900,13 @@
     }
 
     function leadFilters() {
+      var pipelineId = document.querySelector('input[name="dashboard_pipeline"]:checked')?.value || '';
+      var checkedCampaigns = Array.from(document.querySelectorAll('input[name="dashboard_campaign"]:checked'))
+        .map(function (cb) { return cb.value; })
+        .filter(function (v) { return v && v !== 'all'; });
       return {
-        pipeline_id: document.querySelector('input[name="dashboard_pipeline"]:checked')?.value || '',
-        campaign_id: document.querySelector('input[name="dashboard_campaign"]:checked')?.value || ''
+        pipeline_id: pipelineId,
+        campaign_ids: checkedCampaigns
       };
     }
 
@@ -927,7 +931,14 @@
 
     function loadLeadStages() {
       stateMessage(leadsList, 'Loading lead stages...');
-      crm('dashboard/leads-by-stage' + filterQuery(leadFilters())).then(function (payload) {
+      var filters = leadFilters();
+      var params = new URLSearchParams();
+      if (filters.pipeline_id) params.set('pipeline_id', filters.pipeline_id);
+      if (filters.campaign_ids && filters.campaign_ids.length) {
+        filters.campaign_ids.forEach(function (id) { params.append('campaign_ids[]', id); });
+      }
+      var qs = params.toString() ? '?' + params.toString() : '';
+      crm('dashboard/leads-by-stage' + qs).then(function (payload) {
         renderLeadStages(unwrap(payload) || []);
       }).catch(function () {
         stateMessage(leadsList, 'Lead stage data could not be loaded.', 'error');
@@ -1003,8 +1014,8 @@
 
       if (pipelineOptions) {
         pipelineOptions.innerHTML = pipelineSearch + pipelines.map(function (pipeline, index) {
-          return '<label class="crm-choice"><input type="radio" name="dashboard_pipeline" value="' + pipeline.id + '"' + (index === 0 ? ' checked' : '') + '>'
-            + '<span class="crm-radio"></span><span>' + escapeHtml(pipeline.name) + '</span></label>';
+          return '<label class="crm-choice dashboard-filter-option"><input type="radio" name="dashboard_pipeline" value="' + pipeline.id + '"' + (index === 0 ? ' checked' : '') + '>'
+            + '<span class="crm-radio"></span><span class="bold">' + escapeHtml(pipeline.name) + '</span></label>';
         }).join('');
         if (!pipelines.length) stateMessage(pipelineOptions, 'No active pipelines found.');
         const label = pipelineOptions.closest('[data-filter]')?.querySelector('[data-filter-label]');
@@ -1013,11 +1024,34 @@
 
       if (campaignOptions) {
         campaignOptions.innerHTML = campaignSearch
-          + '<label class="crm-choice"><input type="radio" name="dashboard_campaign" value="" checked><span class="crm-radio"></span><span>All campaigns</span></label>'
+          + '<label class="crm-choice dashboard-filter-option wrapper-for-checkbox"><input type="checkbox" name="dashboard_campaign" value="all"><span class="crm-checkbox"></span><span class="bold">Select all</span></label>'
+          + '<div class="wrapper-over">'
           + campaigns.map(function (campaign) {
-            return '<label class="crm-choice"><input type="radio" name="dashboard_campaign" value="' + campaign.id + '">'
-              + '<span class="crm-radio"></span><span>' + escapeHtml(campaign.name) + '</span></label>';
-          }).join('');
+            return '<label class="crm-choice dashboard-filter-option wrapper-for-checkbox"><input type="checkbox" name="dashboard_campaign" value="' + campaign.id + '">'
+              + '<span class="crm-checkbox"></span><span class="bold">' + escapeHtml(campaign.name) + '</span></label>';
+          }).join('')
+          + '</div>';
+
+        const campaignLabel = campaignOptions.closest('[data-filter]')?.querySelector('[data-filter-label]');
+        if (campaignLabel) campaignLabel.textContent = 'Campaign';
+
+        // Bind "Select all" toggle
+        var selectAllCb = campaignOptions.querySelector('input[value="all"]');
+        if (selectAllCb) {
+          selectAllCb.addEventListener('change', function () {
+            campaignOptions.querySelectorAll('input[name="dashboard_campaign"]').forEach(function (cb) {
+              cb.checked = selectAllCb.checked;
+            });
+          });
+        }
+        // Un-tick Select all when any individual is unchecked
+        campaignOptions.addEventListener('change', function (e) {
+          if (e.target !== selectAllCb && e.target.name === 'dashboard_campaign') {
+            var allBoxes = campaignOptions.querySelectorAll('input[name="dashboard_campaign"]:not([value="all"])');
+            var allChecked = Array.from(allBoxes).every(function (cb) { return cb.checked; });
+            if (selectAllCb) selectAllCb.checked = allChecked;
+          }
+        });
       }
 
       [pipelineOptions, campaignOptions].forEach(function (body) {
@@ -1075,7 +1109,7 @@
       renderFilterChoices(pipelines, campaigns);
       refreshCampaignDependentUi(campaigns);
       loadLeadStages();
-      initCreateCampaignModal(pipelines, users);
+      initCreateCampaignModal(pipelines, users, refreshCampaignsAndFilters);
     }).catch(function () {
       stateMessage(leadsList, 'Dashboard filters could not be loaded.', 'error');
       stateMessage(pipelineOptions, 'Pipelines could not be loaded.', 'error');
@@ -1084,7 +1118,7 @@
     });
   }
 
-  function initCreateCampaignModal(pipelines, users) {
+  function initCreateCampaignModal(pipelines, users, afterCreateRefresh) {
     const modalForm = document.getElementById('campaignCreateForm');
     if (!modalForm) return;
 
@@ -1101,10 +1135,19 @@
     const prioritySelect = document.getElementById('campaignPrioritySelect');
     const duplicacyScope = document.getElementById('campaignDuplicacyScope');
     const duplicacyAction = document.getElementById('campaignDuplicacyAction');
+    const conditionsModal = document.querySelector('[data-conditions-modal]');
+    const conditionsForm = document.getElementById('campaignConditionsForm');
+    const conditionSeedInput = document.getElementById('conditionFieldSeed');
+    const conditionSeedAdd = document.getElementById('conditionSeedAdd');
+    const conditionList = document.getElementById('conditionsRuleList');
+    const conditionAddRule = document.getElementById('conditionsAddRule');
+    const fallbackUser = document.getElementById('conditionsFallbackUser');
 
     let selectedDistribution = 'on_demand';
     const selectedManagers = new Set();
     const selectedAgents = new Set();
+    let pendingConditionalRules = [];
+    let pendingFallbackUserId = null;
 
     // 1. Populate Pipelines select
     if (pipelineSelect) {
@@ -1117,6 +1160,83 @@
       });
     }
 
+    function userOptions(selectedId) {
+      return '<option value="">Choose User</option>' + users.map(function (user) {
+        return '<option value="' + user.id + '"' + (Number(selectedId) === Number(user.id) ? ' selected' : '') + '>'
+          + escapeHtml(user.name)
+          + '</option>';
+      }).join('');
+    }
+
+    function populateConditionSelects() {
+      conditionList?.querySelectorAll('[data-condition-user]').forEach(function (select) {
+        const selected = select.value;
+        select.innerHTML = userOptions(selected);
+      });
+      if (fallbackUser) {
+        const selected = fallbackUser.value || pendingFallbackUserId || '';
+        fallbackUser.innerHTML = userOptions(selected);
+      }
+    }
+
+    function relabelConditionRows() {
+      conditionList?.querySelectorAll('[data-condition-rule]').forEach(function (row, index) {
+        const label = row.querySelector('label');
+        if (label) label.textContent = 'Option ' + (index + 1);
+      });
+    }
+
+    function conditionRow(field, userId) {
+      const row = document.createElement('div');
+      row.className = 'conditions-row conditions-rule';
+      row.setAttribute('data-condition-rule', '');
+      row.innerHTML = '<label>Option</label>'
+        + '<input type="text" class="conditions-input" data-condition-field placeholder="Ex. Name,City.">'
+        + '<span class="conditions-then">then assign lead to<br>User:</span>'
+        + '<div class="conditions-select-wrap"><select class="conditions-input" data-condition-user>'
+        + userOptions(userId)
+        + '</select></div>'
+        + '<button type="button" class="conditions-delete" data-condition-remove aria-label="Remove condition"><i class="fa-solid fa-trash"></i></button>';
+      row.querySelector('[data-condition-field]').value = field || '';
+      return row;
+    }
+
+    function resetConditionBuilder() {
+      if (conditionSeedInput) conditionSeedInput.value = '';
+      pendingConditionalRules = [];
+      pendingFallbackUserId = null;
+      if (conditionList) {
+        conditionList.innerHTML = '';
+        conditionList.appendChild(conditionRow('', ''));
+        relabelConditionRows();
+      }
+      if (fallbackUser) fallbackUser.value = '';
+      populateConditionSelects();
+    }
+
+    function openConditionsModal() {
+      populateConditionSelects();
+      if (campaignModal) {
+        campaignModal.classList.add('conditions-active');
+      }
+      conditionsModal?.classList.add('open');
+    }
+
+    function closeConditionsModal() {
+      conditionsModal?.classList.remove('open');
+      if (campaignModal) {
+        campaignModal.classList.remove('conditions-active');
+      }
+    }
+
+    function parseConditionInput(value) {
+      const parts = String(value || '').split(',').map(function (part) { return part.trim(); }).filter(Boolean);
+      return {
+        field: parts[0] || 'Lead Data',
+        value: parts.slice(1).join(', ') || parts[0] || ''
+      };
+    }
+
     // 2. Set default campaign name on open and clear state
     const openBtn = document.querySelector('[data-campaign-open]');
     if (openBtn) {
@@ -1124,6 +1244,7 @@
         selectedDistribution = 'on_demand';
         selectedManagers.clear();
         selectedAgents.clear();
+        resetConditionBuilder();
 
         // Default manager to current logged in user if they are in the list
         const currentUserId = window.CallingCrmApi.currentUserId;
@@ -1307,8 +1428,83 @@
         distCards.forEach(function (c) { c.classList.remove('selected'); });
         card.classList.add('selected');
         selectedDistribution = card.dataset.strategy;
+        if (selectedDistribution === 'conditional') {
+          openConditionsModal();
+        }
       });
     });
+
+    conditionSeedAdd?.addEventListener('click', function () {
+      if (!conditionList) return;
+      const value = conditionSeedInput?.value.trim() || '';
+      if (!value) {
+        conditionSeedInput?.focus();
+        return;
+      }
+      conditionList.appendChild(conditionRow(value, ''));
+      if (conditionSeedInput) conditionSeedInput.value = '';
+      relabelConditionRows();
+    });
+
+    conditionAddRule?.addEventListener('click', function () {
+      if (!conditionList) return;
+      conditionList.appendChild(conditionRow('', ''));
+      relabelConditionRows();
+    });
+
+    conditionList?.addEventListener('click', function (event) {
+      const remove = event.target.closest('[data-condition-remove]');
+      if (!remove) return;
+      const rows = conditionList.querySelectorAll('[data-condition-rule]');
+      if (rows.length <= 1) {
+        const row = remove.closest('[data-condition-rule]');
+        const field = row?.querySelector('[data-condition-field]');
+        const user = row?.querySelector('[data-condition-user]');
+        if (field) field.value = '';
+        if (user) user.value = '';
+      } else {
+        remove.closest('[data-condition-rule]')?.remove();
+      }
+      relabelConditionRows();
+    });
+
+    conditionsForm?.addEventListener('submit', function (event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const rules = Array.from(conditionList?.querySelectorAll('[data-condition-rule]') || []).map(function (row) {
+        const raw = row.querySelector('[data-condition-field]')?.value.trim() || '';
+        const userId = row.querySelector('[data-condition-user]')?.value || '';
+        const parsed = parseConditionInput(raw);
+        return {
+          raw: raw,
+          condition_field: parsed.field,
+          condition_value: parsed.value,
+          user_id: userId ? Number(userId) : null
+        };
+      }).filter(function (rule) {
+        return rule.raw && rule.user_id;
+      });
+
+      if (!rules.length) {
+        toast('Add at least one condition and choose a user.', 'error');
+        return;
+      }
+
+      pendingConditionalRules = rules;
+      pendingFallbackUserId = fallbackUser?.value ? Number(fallbackUser.value) : null;
+      rules.forEach(function (rule) { selectedAgents.add(rule.user_id); });
+      if (pendingFallbackUserId) selectedAgents.add(pendingFallbackUserId);
+      renderAgentChips();
+      closeConditionsModal();
+      toast('Condition rules saved for this campaign.');
+    }, true);
+
+    conditionsModal?.addEventListener('click', function (event) {
+      if (event.target === conditionsModal || event.target.closest('[data-conditions-close]')) {
+        closeConditionsModal();
+      }
+    }, true);
 
     // 10. Additional Settings expand panel
     if (addSettingsBtn && addSettingsContent) {
@@ -1339,6 +1535,12 @@
         return;
       }
 
+      if (selectedDistribution === 'conditional' && !pendingConditionalRules.length) {
+        toast('Set at least one condition for conditional distribution.', 'error');
+        openConditionsModal();
+        return;
+      }
+
       const payload = {
         name: name,
         pipeline_id: Number(pipelineId),
@@ -1348,16 +1550,40 @@
         priority: prioritySelect ? prioritySelect.value : 'medium',
         settings: {
           duplicate_check_scope: duplicacyScope ? duplicacyScope.value : 'campaign',
-          duplicate_action: duplicacyAction ? duplicacyAction.value : 'ignore'
+          duplicate_action: duplicacyAction ? duplicacyAction.value : 'ignore',
+          fallback_user_id: pendingFallbackUserId
         }
       };
 
       crm('campaigns', { method: 'POST', body: payload }).then(function (res) {
-        toast('Campaign created successfully.');
-        const backdrop = document.querySelector('[data-campaign-modal]');
-        if (backdrop) backdrop.classList.remove('open');
+        const campaign = unwrap(res);
+        const ruleRequests = selectedDistribution === 'conditional' && campaign?.id
+          ? pendingConditionalRules.map(function (rule, index) {
+            return crm('campaigns/' + campaign.id + '/assignment-rules', {
+              method: 'POST',
+              body: {
+                name: 'Condition ' + (index + 1),
+                user_id: rule.user_id,
+                condition_field: rule.condition_field,
+                condition_operator: 'contains',
+                condition_value: rule.condition_value,
+                sort_order: index + 1,
+                is_active: true
+              }
+            });
+          })
+          : [];
 
-        refreshCampaignsAndFilters();
+        return Promise.all(ruleRequests).then(function () {
+          toast('Campaign created successfully.');
+          const backdrop = document.querySelector('[data-campaign-modal]');
+          if (backdrop) backdrop.classList.remove('open');
+          if (typeof afterCreateRefresh === 'function') {
+            afterCreateRefresh();
+          } else {
+            loadCampaigns();
+          }
+        });
       });
     }, true);
   }

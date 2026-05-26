@@ -9,4 +9,6 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  * allow your team to quickly build robust real-time web applications.
  */
 
-import './echo';
+if (import.meta.env.VITE_ENABLE_REVERB === 'true') {
+    import('./echo');
+}

@@ -6,18 +6,18 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title><?php echo $__env->yieldContent('title', 'AMPL Chat admin'); ?></title>
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="<?php echo e(asset('favicon.ico')); ?>" type="image/x-icon">
 
     <!-- Plugin CSS -->
-    <link rel="stylesheet" href="include/assets/plugin/datatables/responsive.dataTables.min.css">
-    <link rel="stylesheet" href="include/assets/plugin/datatables/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="<?php echo e(asset('assets/plugin/datatables/responsive.dataTables.min.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(asset('assets/plugin/datatables/dataTables.bootstrap5.min.css')); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
         integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <!-- Project CSS -->
-    <link rel="stylesheet" href="<?php echo e(asset('assets/css/ebazar.style.min.css')); ?>?v=1.0">
+    <link rel="stylesheet" href="<?php echo e(asset('assets/css/ebazar.style.min.css')); ?>?v=1.1">
 
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     <?php echo $__env->yieldPushContent('styles'); ?>
@@ -253,7 +253,7 @@
                                     <div class="card border-0 w280">
                                         <div class="card-body pb-0">
                                             <div class="d-flex py-1">
-                                                <img class="avatar rounded-circle" src="assets/images/profile_av.svg"
+                                                <img class="avatar rounded-circle" src="<?php echo e(asset('assets/images/profile_av.svg')); ?>"
                                                     alt="profile">
                                                 <div class="flex-fill ms-3">
                                                     <p class="mb-0"><span class="font-weight-bold">John Quinn</span>
