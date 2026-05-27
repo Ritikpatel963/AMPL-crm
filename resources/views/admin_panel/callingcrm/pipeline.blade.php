@@ -78,28 +78,34 @@
   <div class="page" id="page-detail">
     <div class="topbar">
       <div class="topbar-left">
-        <div class="topbar-back" onclick="showPage('all')">
+        <button type="button" class="topbar-back" onclick="showPage('all')" aria-label="Back to all campaigns">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 8H3M7 4L3 8l4 4"/></svg>
-          All Campaigns
-        </div>
-        <div class="topbar-sep"></div>
+        </button>
         <span class="page-title">Indore Sales Pipeline</span>
       </div>
       <div class="topbar-right">
-        <div class="search-wrap">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
-          <input type="text" placeholder="Search campaign…" />
-        </div>
         <button class="btn">Lead Summary</button>
         <button class="btn">Call Logs</button>
-        <button class="btn">
-          Action
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
-        </button>
+        <div class="pipeline-action-wrap">
+          <button type="button" class="btn" data-pipeline-action-toggle>
+            Action
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+          </button>
+          <div class="pipeline-action-menu" data-pipeline-action-menu>
+            <button type="button">Dispositions</button>
+            <button type="button">Upload Excel Sheet</button>
+            <button type="button">Add Lead</button>
+            <button type="button">Manage Pipelines</button>
+          </div>
+        </div>
         <button class="btn btn-primary">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v12M2 8h12"/></svg>
           Create Campaign
         </button>
+        <div class="search-wrap">
+          <input type="text" placeholder="Search Campaign" />
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/></svg>
+        </div>
       </div>
     </div>
 

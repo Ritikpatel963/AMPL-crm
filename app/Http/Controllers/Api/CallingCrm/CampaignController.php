@@ -292,8 +292,11 @@ class CampaignController extends Controller
                 sum(case when assigned_user_id is not null then 1 else 0 end) as assigned_leads,
                 sum(case when status = "uncontacted" then 1 else 0 end) as uncontacted_leads,
                 sum(case when status = "in_progress" then 1 else 0 end) as in_progress_leads,
+                sum(case when status = "in_progress" and next_follow_up_at is null then 1 else 0 end) as no_follow_up_leads,
+                sum(case when status = "in_progress" and next_follow_up_at is not null then 1 else 0 end) as follow_up_leads,
                 sum(case when status = "converted" then 1 else 0 end) as converted_leads,
-                sum(case when status = "lost" then 1 else 0 end) as lost_leads
+                sum(case when status = "lost" then 1 else 0 end) as lost_leads,
+                sum(case when status = "closed" then 1 else 0 end) as closed_by_system
             ')
             ->first();
 
@@ -306,8 +309,11 @@ class CampaignController extends Controller
                 'assigned_leads' => (int) ($stats->assigned_leads ?? 0),
                 'uncontacted_leads' => (int) ($stats->uncontacted_leads ?? 0),
                 'in_progress_leads' => (int) ($stats->in_progress_leads ?? 0),
+                'no_follow_up_leads' => (int) ($stats->no_follow_up_leads ?? 0),
+                'follow_up_leads' => (int) ($stats->follow_up_leads ?? 0),
                 'converted_leads' => (int) ($stats->converted_leads ?? 0),
                 'lost_leads' => (int) ($stats->lost_leads ?? 0),
+                'closed_by_system' => (int) ($stats->closed_by_system ?? 0),
             ],
         ]);
     }

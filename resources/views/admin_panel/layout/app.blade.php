@@ -23,7 +23,7 @@
     @stack('styles')
 </head>
 
-<body>
+<body class="{{ request()->routeIs('admin_panel.admin.callingcrm.*') ? 'calling-crm-page' : '' }}">
     <div id="ebazar-layout" class="theme-blue">
 
         <!-- sidebar -->

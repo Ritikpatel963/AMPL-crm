@@ -13,7 +13,7 @@
       <div class="contact-search-header">
         <h1 class="page-title">Contacts</h1>
         <div class="header-actions">
-          <button class="btn-outline" type="button" onclick="window.location='{{ route('admin_panel.admin.callingcrm.contact.properties') }}'">
+          <button class="btn-outline" type="button" onclick="window.location='{{ route('admin_panel.admin.callingcrm.settings') }}#properties'">
             <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Custom Contact Properties
           </button>
@@ -90,7 +90,7 @@
           <h1 class="page-title">Contact Search</h1>
         </div>
         <div class="header-actions">
-          <button class="btn-outline" type="button" onclick="window.location='{{ route('admin_panel.admin.callingcrm.contact.properties') }}'">
+          <button class="btn-outline" type="button" onclick="window.location='{{ route('admin_panel.admin.callingcrm.settings') }}#properties'">
             <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Custom Contact Properties
           </button>
@@ -163,16 +163,20 @@
     </div>
 
     <div class="crm-modal-backdrop" data-upload-modal>
-      <div class="crm-modal" role="dialog" aria-modal="true" aria-labelledby="contactUploadExcelTitle">
+      <div class="crm-modal crm-large-modal contact-upload-modal" role="dialog" aria-modal="true" aria-labelledby="contactUploadExcelTitle">
         <div class="crm-modal-head">
           <div class="modal-title-wrap">
             <div class="crm-modal-title" id="contactUploadExcelTitle">Upload Excel Sheet</div>
+            <a href="https://docs.neodove.com/" target="_blank" class="learn-more-pill" rel="noopener">
+              <i class="fa-regular fa-circle-play"></i>
+              Learn More
+            </a>
           </div>
           <button type="button" class="crm-modal-close" data-upload-close aria-label="Close">&times;</button>
         </div>
         <div class="upload-dropzone">
           <div>
-            <div class="upload-icon">↑</div>
+            <div class="upload-icon"><i class="fa-solid fa-arrow-up"></i></div>
             <div class="upload-drop-text">Drag and drop file</div>
             <button type="button" class="upload-browse-btn">Browse</button>
             <div class="upload-format">Supported formats are .csv, .xls, .xlsx</div>
@@ -180,9 +184,9 @@
         </div>
         <div class="upload-meta-row">
           <div>Max leads: 25,000 at a time, file size limit: 3MB.</div>
-          <a href="#" class="sample-link">Download Sample file</a>
+          <a href="#" class="sample-link" data-import-sample-link>Download Sample file</a>
         </div>
-        <div class="upload-note">No specific column order needed. Include crucial details like name and number in the file.</div>
+        <div class="upload-note"><i class="fa-regular fa-sun"></i> No specific column order needed! Just include crucial details like name and number in the file.</div>
       </div>
     </div>
 
@@ -191,21 +195,26 @@
         <div class="crm-modal-head">
           <div class="modal-title-wrap">
             <div class="crm-modal-title" id="addLeadTitle">Add Lead</div>
+            <a href="https://docs.neodove.com/" target="_blank" class="learn-more-pill" rel="noopener">
+              <i class="fa-regular fa-circle-play"></i>
+              Learn More
+            </a>
           </div>
           <button type="button" class="crm-modal-close" data-lead-close aria-label="Close">&times;</button>
         </div>
-        <div class="lead-form">
-          <input class="lead-input" type="text" placeholder="Contact Name">
-          <input class="lead-input" type="tel" placeholder="Contact Number *">
-          <input class="lead-input" type="email" placeholder="Email">
+        <form class="lead-form" data-add-lead-form>
+          <input class="lead-input" type="text" placeholder="Contact Name" autocomplete="name">
+          <input class="lead-input" type="tel" placeholder="Contact Number *" autocomplete="tel" required>
+          <input class="lead-input" type="email" placeholder="Email" autocomplete="email">
           <div class="lead-select">
-            <span>Campaign *</span>
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path d="M5.5 7.5 10 12l4.5-4.5H5.5z"/></svg>
+            <select class="lead-input" data-crm-campaign-select required>
+              <option value="">Campaign *</option>
+            </select>
           </div>
           <div class="lead-modal-actions">
-            <button type="button" class="lead-submit-btn">Submit</button>
+            <button type="submit" class="lead-submit-btn">Submit</button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
 
@@ -216,3 +225,4 @@
 @push('scripts')
 <script src="{{ asset('js/crm/pages/contact.js') }}"></script>
 @endpush
+

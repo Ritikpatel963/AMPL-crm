@@ -178,6 +178,38 @@
       return sourceList?.querySelector('input[name="source"]:checked')?.value || '';
     }
 
+    function renderContactSources(sources) {
+      if (!sourceList) return;
+      const fallbackSources = [
+        { code: 'FILE_UPLOAD', name: 'File Upload' },
+        { code: 'WALK_IN_LEAD', name: 'Walk In Lead' },
+        { code: 'INCOMING_IVR', name: 'Incoming IVR' },
+        { code: 'WORKFLOW', name: 'Workflow' },
+        { code: 'GOOGLE_SHEET', name: 'Google Sheet' },
+        { code: 'MANUAL', name: 'Manual' },
+        { code: 'API', name: 'API' }
+      ];
+      const rows = (sources && sources.length ? sources : fallbackSources)
+        .map(function (source) {
+          return {
+            code: source.code || source.value || source.name,
+            name: source.name || source.label || source.code || source.value
+          };
+        })
+        .filter(function (source) {
+          return source.code;
+        });
+
+      sourceList.innerHTML = rows.map(function (source, index) {
+        return '<label class="' + (index >= 5 ? 'contact-source-extra' : '') + '">'
+          + '<input type="checkbox" name="source" value="' + escapeHtml(source.code) + '">'
+          + '<span>' + escapeHtml(source.name || source.code).replace(/_/g, ' ') + '</span>'
+          + '</label>';
+      }).join('') + (rows.length > 5
+        ? '<button type="button" class="contact-view-more" data-source-more>View More...</button>'
+        : '');
+    }
+
     function collectFilters() {
       const searchParts = [formValue('name'), formValue('phone'), formValue('email')].filter(Boolean);
       activeFilters.search = searchParts.join(' ');
@@ -544,6 +576,10 @@
       }).join('');
     });
 
+    loadBootstrap().then(function (bootstrap) {
+      renderContactSources(bootstrap.lead_sources || []);
+    });
+
     function fetchContacts() {
       showResultsPage();
       if (contactDataTable) {
@@ -610,9 +646,11 @@
     });
 
     root.querySelector('[data-contact-back]')?.addEventListener('click', showFormPage);
-    root.querySelector('[data-source-more]')?.addEventListener('click', function (event) {
-      sourceList?.classList.toggle('show-all');
-      event.currentTarget.textContent = sourceList?.classList.contains('show-all') ? 'View Less...' : 'View More...';
+    sourceList?.addEventListener('click', function (event) {
+      const moreButton = event.target.closest('[data-source-more]');
+      if (!moreButton) return;
+      sourceList.classList.toggle('show-all');
+      moreButton.textContent = sourceList.classList.contains('show-all') ? 'View Less...' : 'View More...';
     });
     sourceList?.addEventListener('change', function (event) {
       const checkbox = event.target.closest('input[name="source"]');
@@ -709,7 +747,8 @@
     // Add Lead Modal functionality (Preserved)
     const leadModal = document.querySelector('[data-lead-modal]');
     const submitButton = leadModal?.querySelector('.lead-submit-btn');
-    submitButton?.addEventListener('click', function (event) {
+    const leadForm = leadModal?.querySelector('[data-add-lead-form]');
+    function submitLeadModal(event) {
       event.preventDefault();
       event.stopImmediatePropagation();
 
@@ -726,10 +765,12 @@
       crm('leads', { method: 'POST', body: payload }).then(function () {
         toast('Lead created successfully.');
         leadModal.classList.remove('open');
-        leadModal.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+        leadModal.querySelectorAll('input, select').forEach(function (input) { input.value = ''; });
         fetchContacts(); // refresh list
       });
-    }, true);
+    }
+    submitButton?.addEventListener('click', submitLeadModal, true);
+    leadForm?.addEventListener('submit', submitLeadModal, true);
 
     bindUploadButtons();
     
@@ -760,6 +801,7 @@
     fileInput.addEventListener('change', function () {
       const file = fileInput.files && fileInput.files[0];
       const campaignId = document.querySelector('[data-crm-campaign-select]')?.value
+        || document.querySelector('[data-contact-campaign-select]')?.value
         || document.querySelector('.campaigns-body select')?.value
         || state.campaigns[0]?.id;
       if (!file) return;

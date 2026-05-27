@@ -124,6 +124,9 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
     Route::get('/calling-crm/pipeline', function () {
         return view('admin_panel.callingcrm.pipeline');
     })->name('callingcrm.pipeline');
+    Route::get('/calling-crm/pipeline/campaign/{campaign}', function ($campaign) {
+        return view('admin_panel.callingcrm.campaign-detail', ['campaignId' => $campaign]);
+    })->name('callingcrm.campaign.detail');
     Route::get('/calling-crm/report', function () {
         return view('admin_panel.callingcrm.report');
     })->name('callingcrm.report');
@@ -167,6 +170,7 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
         Route::delete('/contact-properties/{property}', [\App\Http\Controllers\Api\CallingCrm\SettingsController::class, 'destroyContactProperty']);
 
         Route::apiResource('pipelines', \App\Http\Controllers\Api\CallingCrm\PipelineController::class);
+        Route::get('/pipelines/{pipeline}/summary', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'summary']);
         Route::post('/pipelines/{pipeline}/stages', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'storeStage']);
         Route::post('/pipelines/{pipeline}/stages/reorder', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'reorderStages']);
         Route::put('/stages/{stage}', [\App\Http\Controllers\Api\CallingCrm\PipelineController::class, 'updateStage']);

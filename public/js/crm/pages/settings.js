@@ -183,7 +183,11 @@
                 tabsTrack.addEventListener('scroll', updateTabArrows, { passive: true });
                 window.addEventListener('resize', updateTabArrows);
                 updateTabArrows();
-                tabButtons.forEach(button => button.addEventListener('click', () => setPanel(button.dataset.settingsTab)));
+                tabButtons.forEach(button => button.addEventListener('click', () => {
+                    setPanel(button.dataset.settingsTab);
+                    if (button.dataset.settingsTab) window.history.replaceState(null, '', `#${button.dataset.settingsTab}`);
+                }));
+                if (window.location.hash) setPanel(window.location.hash.replace('#', ''));
 
                 settings.querySelector('[data-add-user-open]')?.addEventListener('click', () => openUserModal());
                 settings.querySelector('[data-add-user-close]')?.addEventListener('click', () => closeBackdrop(addUserModal));
@@ -491,8 +495,12 @@
             };
 
             tabButtons.forEach(button => {
-                button.addEventListener('click', () => setPanel(button.dataset.settingsTab));
+                button.addEventListener('click', () => {
+                    setPanel(button.dataset.settingsTab);
+                    if (button.dataset.settingsTab) window.history.replaceState(null, '', `#${button.dataset.settingsTab}`);
+                });
             });
+            if (window.location.hash) setPanel(window.location.hash.replace('#', ''));
 
             settings.querySelector('[data-add-user-open]')?.addEventListener('click', () => openUserModal());
             settings.querySelector('[data-add-user-row]')?.addEventListener('click', addBlankUserRow);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\CallingCrm;
 
 use App\Http\Controllers\Controller;
+use App\Models\Lead;
 use App\Models\LeadStage;
 use App\Models\Pipeline;
 use App\Models\StageTag;
@@ -45,6 +46,61 @@ class PipelineController extends Controller
         return response()->json([
             'status' => true,
             'data' => $pipeline->load(['stages.tags', 'stages.transitions', 'campaigns', 'dispositions']),
+        ]);
+    }
+
+    public function summary(Pipeline $pipeline)
+    {
+        $leadStats = Lead::query()
+            ->where('pipeline_id', $pipeline->id)
+            ->selectRaw('
+                count(*) as total_leads,
+                sum(case when status = "in_progress" then 1 else 0 end) as in_progress_leads,
+                sum(case when status in ("converted", "lost", "closed") then 1 else 0 end) as closed_leads
+            ')
+            ->first();
+
+        $stages = $pipeline->stages()
+            ->withCount(['leads' => fn ($query) => $query->where('pipeline_id', $pipeline->id)])
+            ->ordered()
+            ->get()
+            ->map(fn (LeadStage $stage) => [
+                'id' => $stage->id,
+                'name' => $stage->name,
+                'category' => $stage->category,
+                'color' => $stage->color,
+                'is_closed' => $stage->is_closed,
+                'sort_order' => $stage->sort_order,
+                'leads_count' => (int) $stage->leads_count,
+            ]);
+
+        $tags = StageTag::query()
+            ->whereHas('stage', fn ($query) => $query->where('pipeline_id', $pipeline->id))
+            ->with('stage:id,name,category,color,pipeline_id')
+            ->withCount(['leads' => fn ($query) => $query->where('pipeline_id', $pipeline->id)])
+            ->orderByDesc('leads_count')
+            ->get()
+            ->filter(fn (StageTag $tag) => $tag->leads_count > 0)
+            ->groupBy(fn (StageTag $tag) => $tag->stage?->category ?: 'uncategorized')
+            ->map(fn ($group) => $group->values()->map(fn (StageTag $tag) => [
+                'id' => $tag->id,
+                'name' => $tag->name,
+                'color' => $tag->color,
+                'stage_name' => $tag->stage?->name,
+                'stage_category' => $tag->stage?->category,
+                'leads_count' => (int) $tag->leads_count,
+            ]));
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'pipeline' => $pipeline,
+                'total_leads' => (int) ($leadStats->total_leads ?? 0),
+                'in_progress_leads' => (int) ($leadStats->in_progress_leads ?? 0),
+                'closed_leads' => (int) ($leadStats->closed_leads ?? 0),
+                'stages' => $stages,
+                'tags' => $tags,
+            ],
         ]);
     }
 
