@@ -26,7 +26,7 @@ class ProductManageController extends Controller
     {
         $request->validate([
             'name' => 'required',
-            'sku' => 'required|unique:products',
+            'sku' => 'nullable|unique:products',
             'category_id' => 'required',
             'images.*' => 'image|mimes:jpg,jpeg,png|max:2048'
         ]);
@@ -56,6 +56,7 @@ class ProductManageController extends Controller
             'video_url' => $request->video_url,
             'status' => $request->has('status') ? 1 : 0,
             'featured' => $request->has('featured') ? 1 : 0,
+            'is_offer' => $request->has('is_offer') ? 1 : 0,
             'images' => json_encode($imagePaths),
         ]);
 
@@ -78,7 +79,7 @@ class ProductManageController extends Controller
 
         $request->validate([
             'name' => 'required',
-            'sku' => 'required|unique:products,sku,' . $product->id,
+            'sku' => 'nullable|unique:products,sku,' . $product->id,
             'category_id' => 'required',
             'images.*' => 'image|mimes:jpg,jpeg,png|max:2048'
         ]);
@@ -119,6 +120,7 @@ class ProductManageController extends Controller
             'video_url' => $request->video_url,
             'status' => $request->has('status') ? 1 : 0,
             'featured' => $request->has('featured') ? 1 : 0,
+            'is_offer' => $request->has('is_offer') ? 1 : 0,
             'images' => json_encode($imagePaths),
         ]);
 

@@ -19,8 +19,8 @@
             </div>
 
             <div class="col-md-6 mb-3">
-                <label>SKU</label>
-                <input type="text" name="sku" class="form-control" value="{{ $product->sku }}" required>
+                <label>SKU <span class="text-muted">(optional)</span></label>
+                <input type="text" name="sku" class="form-control" value="{{ $product->sku }}">
             </div>
 
             <div class="col-md-6 mb-3">
@@ -79,7 +79,7 @@
 
             <div class="col-md-12 mb-3">
                 <label>Description</label>
-                <textarea name="description" class="form-control" rows="3">{{ $product->description }}</textarea>
+                <textarea name="description" class="form-control summernote" rows="3">{{ $product->description }}</textarea>
             </div>
 
             <div class="col-md-6 mb-3">
@@ -108,7 +108,12 @@
 
             <div class="col-md-6 mb-3 form-check">
                 <input type="checkbox" name="featured" class="form-check-input" id="featuredCheck" {{ $product->featured ? 'checked' : '' }}>
-                <label class="form-check-label" for="featuredCheck">Featured</label>
+                <label class="form-check-label" for="featuredCheck">Trending Product</label>
+            </div>
+
+            <div class="col-md-6 mb-3 form-check">
+                <input type="checkbox" name="is_offer" class="form-check-input" id="offerCheck" {{ $product->is_offer ? 'checked' : '' }}>
+                <label class="form-check-label" for="offerCheck">Offer Product</label>
             </div>
         </div>
 
@@ -117,3 +122,17 @@
     </form>
 </div>
 @endsection
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css" rel="stylesheet">
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
+<script>
+  $('.summernote').summernote({
+    height: 220,
+    placeholder: 'Write product description...'
+  });
+</script>
+@endpush

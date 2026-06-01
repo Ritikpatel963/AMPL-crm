@@ -27,12 +27,12 @@
         <input type="text" class="form-control" name="name" required>
       </div>
       <div class="col-md-6">
-        <label class="form-label">SKU / Product Code</label>
-        <input type="text" class="form-control" name="sku" required>
+        <label class="form-label">SKU / Product Code <span class="text-muted">(optional)</span></label>
+        <input type="text" class="form-control" name="sku">
       </div>
       <div class="col-12">
         <label class="form-label">Description</label>
-        <textarea class="form-control" name="description" rows="4"></textarea>
+        <textarea class="form-control summernote" name="description" rows="4"></textarea>
       </div>
       <div class="col-md-4">
         <label class="form-label">Category</label>
@@ -121,7 +121,13 @@
       <div class="col-md-3">
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" name="featured">
-          <label class="form-check-label">Featured Product</label>
+          <label class="form-check-label">Trending Product</label>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" name="is_offer">
+          <label class="form-check-label">Offer Product</label>
         </div>
       </div>
     </div>
@@ -134,3 +140,17 @@
   </form>
 </div>
 @endsection
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css" rel="stylesheet">
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
+<script>
+  $('.summernote').summernote({
+    height: 220,
+    placeholder: 'Write product description...'
+  });
+</script>
+@endpush
