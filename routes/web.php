@@ -48,6 +48,7 @@ Route::get('/dashboard', function () {
         // Customer sees only their assigned agent
         $assignment = AgentCustomerAssignment::where('customer_id', $user->id)
             ->with('agent:id,name,email')
+            ->latest('id')
             ->first();
         $users = collect();
         if ($assignment && $assignment->agent) {
@@ -233,6 +234,8 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
 
         Route::get('/imports', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'index']);
         Route::post('/campaigns/{campaign}/imports', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'store']);
+        Route::post('/campaigns/{campaign}/imports/preview', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'preview']);
+        Route::get('/campaigns/{campaign}/imports/{import}/failed-rows/export', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'exportFailedRows']);
         Route::get('/imports/{import}', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'show']);
         Route::get('/imports/{import}/rows', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'rows']);
         Route::delete('/imports/{import}', [\App\Http\Controllers\Api\CallingCrm\ImportController::class, 'destroy']);

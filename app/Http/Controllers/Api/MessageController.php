@@ -44,6 +44,7 @@ class MessageController extends Controller
 
             $messages = $this->conversationQuery($authUser, (int) $user_id)
                 ->with('sender:id,name', 'receiver:id,name')
+                ->when(request()->filled('after_id'), fn ($query) => $query->where('id', '>', request()->integer('after_id')))
                 ->orderBy('id', 'ASC')
                 ->get();
 
@@ -278,22 +279,6 @@ class MessageController extends Controller
 
     private function conversationQuery(User $authUser, int $otherUserId)
     {
-        if ($authUser->role === 'customer') {
-            return Message::where(function ($query) use ($authUser) {
-                $query->where('sender_id', $authUser->id)
-                    ->orWhere('receiver_id', $authUser->id);
-            });
-        }
-
-        $otherUser = User::find($otherUserId);
-
-        if ($otherUser?->role === 'customer') {
-            return Message::where(function ($query) use ($otherUserId) {
-                $query->where('sender_id', $otherUserId)
-                    ->orWhere('receiver_id', $otherUserId);
-            });
-        }
-
         return Message::where(function ($query) use ($authUser, $otherUserId) {
                 $query->where('sender_id', $authUser->id)
                     ->where('receiver_id', $otherUserId);
@@ -306,14 +291,6 @@ class MessageController extends Controller
 
     private function markConversationAsSeen(User $authUser, int $otherUserId): void
     {
-        if ($authUser->role === 'customer') {
-            Message::where('receiver_id', $authUser->id)
-                ->whereNull('seen_at')
-                ->update(['seen_at' => now()]);
-
-            return;
-        }
-
         Message::where('sender_id', $otherUserId)
             ->where('receiver_id', $authUser->id)
             ->whereNull('seen_at')

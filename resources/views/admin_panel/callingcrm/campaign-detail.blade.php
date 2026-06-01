@@ -2,7 +2,7 @@
 
 @section('title', 'Calling CRM Campaign')
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/crm/calling-crm.css') }}">
+<link rel="stylesheet" href="{{ asset('css/crm/calling-crm.css') }}?v={{ filemtime(public_path('css/crm/calling-crm.css')) }}">
 @endpush
 
 @section('main-content')
@@ -137,6 +137,95 @@
       <div class="campaign-pager">Items per page: <strong>10</strong> <span data-imports-count>0 of 0</span> ‹ ›</div>
     </div>
   </article>
+
+  <!-- Upload Modal (auto-selects current campaign) -->
+  <div class="crm-modal-backdrop" data-upload-modal data-upload-campaign-id="{{ $campaignId }}">
+    <div class="crm-modal crm-large-modal" role="dialog" aria-modal="true" aria-labelledby="detailUploadExcelTitle">
+      <div class="crm-modal-head">
+        <div class="modal-title-wrap">
+          <div class="crm-modal-title" id="detailUploadExcelTitle">Upload Excel Sheet</div>
+          <a href="https://docs.neodove.com/" target="_blank" class="learn-more-pill" rel="noopener">
+            <i class="fa-regular fa-circle-play"></i>
+            Learn More
+          </a>
+        </div>
+        <button type="button" class="crm-modal-close" data-upload-close aria-label="Close">&times;</button>
+      </div>
+
+      <div class="upload-steps">
+        <div class="upload-step active" data-upload-step-indicator="1"><span class="upload-step-num">1</span> Select File</div>
+        <div class="upload-step-divider"></div>
+        <div class="upload-step" data-upload-step-indicator="2"><span class="upload-step-num">2</span> Map Columns</div>
+        <div class="upload-step-divider"></div>
+        <div class="upload-step" data-upload-step-indicator="3"><span class="upload-step-num">3</span> Upload</div>
+      </div>
+
+      <div data-upload-step="1">
+        <div class="upload-campaign-row">
+          <label>Select Campaign *</label>
+          <select class="upload-campaign-select" data-upload-campaign-select>
+            <option value="">Choose a campaign...</option>
+          </select>
+        </div>
+        <div class="upload-dropzone" data-upload-dropzone>
+          <div>
+            <div class="upload-icon">↑</div>
+            <div class="upload-drop-text">Drag and drop file</div>
+            <button type="button" class="upload-browse-btn">Browse</button>
+            <div class="upload-format">Supported formats are .csv, .xls, .xlsx</div>
+          </div>
+        </div>
+        <div class="upload-file-preview" data-upload-file-preview>
+          <div class="upload-file-icon"><i class="fa-solid fa-file-excel"></i></div>
+          <div class="upload-file-info">
+            <div class="upload-file-name" data-upload-file-name></div>
+            <div class="upload-file-size" data-upload-file-size></div>
+          </div>
+          <button type="button" class="upload-file-remove" data-upload-file-remove aria-label="Remove file">&times;</button>
+        </div>
+        <div class="upload-error-msg" data-upload-error></div>
+        <div class="upload-meta-row">
+          <div>Max leads: 25,000 at a time, file size limit: 3MB.</div>
+          <a href="#" class="sample-link" data-import-sample-link>Download Sample file</a>
+        </div>
+        <div class="upload-note"><i class="fa-regular fa-sun"></i> No specific column order needed! Just include crucial details like name and number in the file.</div>
+      </div>
+
+      <div data-upload-step="2" style="display:none;">
+        <div class="upload-mapping-area visible">
+          <div class="upload-mapping-title">Map Your Columns</div>
+          <div class="upload-mapping-sub">We detected <strong data-upload-row-count>0</strong> rows. Match each column to a lead field below.</div>
+          <div class="upload-mapping-scroll">
+            <table class="upload-mapping-table">
+              <thead><tr><th>File Column</th><th>Map To</th><th>Preview</th></tr></thead>
+              <tbody data-upload-mapping-body></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div data-upload-step="3" style="display:none;">
+        <div class="upload-progress-area visible" data-upload-progress>
+          <div class="upload-spinner"></div>
+          <div class="upload-progress-text">Uploading your file...</div>
+          <div class="upload-progress-sub" data-upload-progress-detail>Please wait</div>
+          <div class="upload-progress-bar-wrap"><div class="upload-progress-bar" data-upload-progress-bar></div></div>
+        </div>
+        <div class="upload-result-area" data-upload-result>
+          <div class="upload-result-icon" data-upload-result-icon>✅</div>
+          <div class="upload-result-title" data-upload-result-title>Import Queued Successfully</div>
+          <div class="upload-result-desc" data-upload-result-desc>Your file has been queued for processing.</div>
+          <div class="upload-result-stats" data-upload-result-stats></div>
+        </div>
+      </div>
+
+      <div class="upload-action-row" data-upload-actions>
+        <button type="button" class="upload-btn-back" data-upload-back style="display:none;">Back</button>
+        <button type="button" class="upload-btn-next" data-upload-next disabled>Next</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 @endsection
 

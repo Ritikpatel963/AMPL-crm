@@ -35,15 +35,19 @@ class ProcessCrmContactListImport implements ShouldQueue
             $sourceId = LeadSource::where('code', 'FILE_UPLOAD')->value('id');
             $campaignId = $this->contactList->campaign_id;
             $pipelineId = $this->contactList->campaign?->pipeline_id;
+            $mapping = $this->contactList->mapping;
 
             $created = 0;
             $merged = 0;
             $failed = 0;
 
-            DB::transaction(function () use ($rows, $sourceId, $campaignId, $pipelineId, &$created, &$merged, &$failed) {
+            DB::transaction(function () use ($rows, $sourceId, $campaignId, $pipelineId, $mapping, $assignmentService, &$created, &$merged, &$failed) {
+                $seenPhones = [];
+                
                 foreach ($rows as $index => $row) {
                     $rowNumber = $index + 1;
-                    $phone = preg_replace('/[^0-9]+/', '', $row['phone'] ?? $row[1] ?? '');
+                    $rawPhone = $this->resolveMapped($row, $mapping, 'phone', 1);
+                    $phone = preg_replace('/[^0-9]+/', '', $rawPhone);
 
                     try {
                         if (empty($phone)) {
@@ -51,32 +55,44 @@ class ProcessCrmContactListImport implements ShouldQueue
                         }
 
                         if (strlen($phone) < 10) {
-                            throw new \Exception("Invalid phone number: $phone");
+                            throw new \Exception("Invalid phone format: {$rawPhone}");
                         }
+                        
+                        if (in_array($phone, $seenPhones)) {
+                            throw new \Exception("Duplicate number in file: {$phone}");
+                        }
+                        $seenPhones[] = $phone;
+
+                        $name = $this->resolveMapped($row, $mapping, 'name', 0);
+                        $email = $this->resolveMapped($row, $mapping, 'email', 2);
 
                         $existingLead = Lead::where('campaign_id', $campaignId)
                             ->where('phone', $phone)
-                            ->first();
+                            ->exists();
 
                         if ($existingLead) {
-                            $existingLead->update([
-                                'name' => $row['name'] ?? $row[0] ?? $existingLead->name,
-                                'email' => $row['email'] ?? $row[2] ?? $existingLead->email,
-                                'pipeline_id' => $existingLead->pipeline_id ?? $pipelineId,
-                            ]);
-                            $status = 'merged';
-                            $leadId = $existingLead->id;
-                            $merged++;
+                            throw new \Exception("Duplicate number in campaign: {$phone}");
                         } else {
+                            $metadata = [];
+                            foreach ($row as $header => $val) {
+                                $mappedKey = $mapping[$header] ?? null;
+                                if ($mappedKey && $mappedKey !== 'skip') {
+                                    $metadata[$mappedKey] = trim((string)$val);
+                                }
+                                // Also save the raw header name just in case the condition relies on the exact Excel column name
+                                $metadata[$header] = trim((string)$val);
+                            }
+                            
                             $lead = Lead::create([
                                 'campaign_id' => $campaignId,
                                 'pipeline_id' => $pipelineId,
                                 'source_id' => $sourceId,
                                 'contact_list_id' => $this->contactList->id,
-                                'name' => $row['name'] ?? $row[0] ?? null,
+                                'name' => $name ?: null,
                                 'phone' => $phone,
-                                'email' => $row['email'] ?? $row[2] ?? null,
+                                'email' => $email ?: null,
                                 'status' => 'uncontacted',
+                                'metadata' => $metadata,
                             ]);
                             $assignmentService->assignLead($lead);
                             $status = 'created';
@@ -121,6 +137,20 @@ class ProcessCrmContactListImport implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function resolveMapped(array $row, ?array $mapping, string $field, int $fallbackIndex): string
+    {
+        if ($mapping) {
+            foreach ($mapping as $header => $mappedField) {
+                if ($mappedField === $field && array_key_exists($header, $row)) {
+                    return trim((string) ($row[$header] ?? ''));
+                }
+            }
+            return '';
+        }
+
+        return trim((string) ($row[$field] ?? $row[$fallbackIndex] ?? ''));
     }
 
     private function parseFile(): array

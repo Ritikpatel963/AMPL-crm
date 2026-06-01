@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\AgentCustomerAssignment;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rules\Password;
 
 class AdminCustomerController extends Controller
 {
@@ -41,19 +40,28 @@ class AdminCustomerController extends Controller
 
     public function store(Request $request)
     {
+        // Normalize phone: strip +, strip leading 91, then add 91 prefix
+        $phone = trim($request->input('phone_number', ''));
+        $phone = ltrim($phone, '+');
+        $phone = preg_replace('/^91/', '', $phone);
+        $phone = '91' . $phone;
+        $request->merge(['phone_number' => $phone]);
+
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone_number' => ['nullable', 'string', 'max:30', 'unique:users,phone_number'],
-            'password' => ['required', Password::min(4)],
-            'agent_id' => ['nullable', 'exists:users,id'],
+            'name'         => ['required', 'string', 'max:255'],
+            'phone_number' => ['required', 'string', 'max:30', 'unique:users,phone_number'],
+            'agent_id'     => ['nullable', 'exists:users,id'],
         ]);
 
         $agentId = $data['agent_id'] ?? null;
         unset($data['agent_id']);
 
+        // Auto-generate email + random password so the account works;
+        // customers always log in via OTP from the app.
         $customer = User::create(array_merge($data, [
-            'role' => 'customer',
+            'email'           => 'customer_' . $data['phone_number'] . '@amplchat.local',
+            'password'        => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(16)),
+            'role'            => 'customer',
             'approval_status' => 'approved',
         ]));
 

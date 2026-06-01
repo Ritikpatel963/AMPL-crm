@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Services\CallingCrm\LeadAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class CampaignController extends Controller
@@ -70,11 +71,19 @@ class CampaignController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateCampaign($request);
+        $conditionalRules = $this->extractConditionalRules($data);
         $agentIds = $data['agent_ids'] ?? [];
+        $agentIds = $this->mergeConditionalAgentIds($agentIds, $conditionalRules, $data['settings']['fallback_user_id'] ?? null);
         unset($data['agent_ids']);
 
-        $campaign = Campaign::create($data);
-        $this->syncAgents($campaign, $agentIds);
+        $campaign = DB::transaction(function () use ($data, $agentIds, $conditionalRules) {
+            $campaign = Campaign::create($data);
+            $this->syncAgents($campaign, $agentIds);
+            $this->storeConditionalRules($campaign, $conditionalRules);
+
+            return $campaign;
+        });
+
         $this->assignmentService->distributeUnassigned($campaign->fresh('users'));
 
         return response()->json([
@@ -337,6 +346,77 @@ class CampaignController extends Controller
             'agent_ids' => ['sometimes', 'array'],
             'agent_ids.*' => ['exists:users,id'],
         ]);
+    }
+
+    private function extractConditionalRules(array &$data): array
+    {
+        $rules = $data['settings']['conditional_rules'] ?? [];
+        unset($data['settings']['conditional_rules']);
+
+        if (($data['settings'] ?? null) === []) {
+            $data['settings'] = null;
+        }
+
+        return is_array($rules) ? array_values($rules) : [];
+    }
+
+    private function storeConditionalRules(Campaign $campaign, array $rules): void
+    {
+        if ($campaign->distribution !== 'conditional' || $rules === []) {
+            return;
+        }
+
+        $agentIds = $campaign->users()
+            ->wherePivot('role', 'agent')
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        foreach ($rules as $index => $rule) {
+            $userId = (int) ($rule['user_id'] ?? 0);
+            $field = trim((string) ($rule['condition_field'] ?? $rule['field'] ?? ''));
+            $value = trim((string) ($rule['condition_value'] ?? $rule['value'] ?? ''));
+
+            if (! in_array($userId, $agentIds, true)) {
+                throw ValidationException::withMessages([
+                    'settings.conditional_rules.' . $index . '.user_id' => 'Selected user must be an agent on this campaign.',
+                ]);
+            }
+
+            if ($field === '' || $value === '') {
+                throw ValidationException::withMessages([
+                    'settings.conditional_rules.' . $index . '.condition_value' => 'Condition field and value are required.',
+                ]);
+            }
+
+            $campaign->assignmentRules()->create([
+                'name' => $rule['name'] ?? 'Condition ' . ($index + 1),
+                'user_id' => $userId,
+                'condition_field' => $field,
+                'condition_operator' => (string) ($rule['condition_operator'] ?? $rule['operator'] ?? 'contains'),
+                'condition_value' => $value,
+                'sort_order' => (int) ($rule['sort_order'] ?? ($index + 1)),
+                'is_active' => (bool) ($rule['is_active'] ?? true),
+                'settings' => $rule['settings'] ?? null,
+            ]);
+        }
+    }
+
+    private function mergeConditionalAgentIds(array $agentIds, array $rules, mixed $fallbackUserId): array
+    {
+        $ids = collect($agentIds);
+
+        foreach ($rules as $rule) {
+            if (! empty($rule['user_id'])) {
+                $ids->push((int) $rule['user_id']);
+            }
+        }
+
+        if ($fallbackUserId) {
+            $ids->push((int) $fallbackUserId);
+        }
+
+        return $ids->filter()->unique()->values()->all();
     }
 
     private function syncAgents(Campaign $campaign, array $agentIds): void

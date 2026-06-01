@@ -112,6 +112,50 @@ it('uses conditional assignment rules before equal fallback', function () {
     expect($lead->fresh()->assigned_user_id)->toBe($indoreAgent->id);
 });
 
+it('creates conditional campaign rules with the campaign and uses the fallback user', function () {
+    $matchedAgent = crmAgent();
+    $fallbackAgent = crmAgent();
+    $pipeline = Pipeline::create(['name' => 'Conditional Pipeline']);
+
+    Sanctum::actingAs($matchedAgent);
+
+    $response = $this->postJson('/api/calling-crm/campaigns', [
+        'name' => 'Conditional Campaign',
+        'pipeline_id' => $pipeline->id,
+        'distribution' => 'conditional',
+        'settings' => [
+            'fallback_user_id' => $fallbackAgent->id,
+            'conditional_rules' => [
+                [
+                    'user_id' => $matchedAgent->id,
+                    'condition_field' => 'source',
+                    'condition_operator' => 'equals',
+                    'condition_value' => 'WEB',
+                ],
+            ],
+        ],
+    ])->assertCreated();
+
+    $campaign = Campaign::findOrFail($response->json('data.id'));
+
+    expect($campaign->assignmentRules)->toHaveCount(1);
+    expect($campaign->users()->whereKey($matchedAgent->id)->exists())->toBeTrue();
+    expect($campaign->users()->whereKey($fallbackAgent->id)->exists())->toBeTrue();
+
+    $lead = Lead::create([
+        'campaign_id' => $campaign->id,
+        'pipeline_id' => $pipeline->id,
+        'name' => 'Fallback Lead',
+        'phone' => '9000000011',
+        'source' => 'MANUAL',
+        'status' => 'uncontacted',
+    ]);
+
+    app(LeadAssignmentService::class)->assignLead($lead);
+
+    expect($lead->fresh()->assigned_user_id)->toBe($fallbackAgent->id);
+});
+
 it('claim next assigns on demand leads only to campaign agents', function () {
     $agent = crmAgent();
     $outsider = crmAgent();

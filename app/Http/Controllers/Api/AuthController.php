@@ -134,6 +134,40 @@ class AuthController extends Controller
         return $phone;
     }
 
+    private function loginPhoneCandidates(string $raw, string $normalized): array
+    {
+        $raw = trim($raw);
+        $digits = preg_replace('/\D+/', '', $raw);
+        $withoutCountry = preg_replace('/^91/', '', preg_replace('/\D+/', '', $normalized));
+
+        return array_values(array_unique(array_filter([
+            $raw,
+            ltrim($raw, '+'),
+            $digits,
+            $withoutCountry,
+            $normalized,
+            '+' . $normalized,
+            '91' . $withoutCountry,
+            '+91' . $withoutCountry,
+        ])));
+    }
+
+    private function findLoginUserByPhone(string $rawPhone, string $normalizedPhone): ?User
+    {
+        $candidates = $this->loginPhoneCandidates($rawPhone, $normalizedPhone);
+
+        return User::query()
+            ->whereIn('phone_number', $candidates)
+            ->with('assignedAgent')
+            ->get()
+            ->sortByDesc(function (User $user) use ($normalizedPhone) {
+                return ($user->assignedAgent ? 100 : 0)
+                    + ($user->role === 'customer' ? 10 : 0)
+                    + ($user->phone_number === $normalizedPhone ? 1 : 0);
+            })
+            ->first();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | STEP 1 — Send Login OTP
@@ -162,7 +196,7 @@ class AuthController extends Controller
         try {
 
             // ── Check user exists ─────────────────────────────────────────────
-            $user = User::where('phone_number', $phone)->first();
+            $user = $this->findLoginUserByPhone($request->phone_number ?? '', $phone);
             Log::info('[LOGIN-SEND-OTP] User lookup result', [
                 'phone'           => $phone,
                 'user_found'      => !is_null($user),
@@ -172,11 +206,16 @@ class AuthController extends Controller
             ]);
 
             if (!$user) {
-                Log::warning('[LOGIN-SEND-OTP] ❌ No user found for phone', ['phone' => $phone]);
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'This phone number is not registered. Please sign up first.',
-                ], 404);
+                Log::info('[LOGIN-SEND-OTP] 🆕 Auto-registering new customer', ['phone' => $phone]);
+                
+                $user = User::create([
+                    'phone_number'    => $phone,
+                    'email'           => 'customer_' . $phone . '@amplchat.local',
+                    'role'            => 'customer',
+                    'name'            => 'Customer',
+                    'password'        => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(16)),
+                    'approval_status' => 'approved',
+                ]);
             }
 
             // ── Block unapproved vendors early (no point sending OTP) ─────────
@@ -370,7 +409,7 @@ class AuthController extends Controller
             $otpRecord->update(['is_verified' => true]);
 
             // ── Load user ─────────────────────────────────────────────────────
-            $user = User::where('phone_number', $phone)->first();
+            $user = $this->findLoginUserByPhone($request->phone_number ?? '', $phone);
             Log::info('[LOGIN] User lookup after OTP verify', [
                 'user_found'      => !is_null($user),
                 'user_id'         => $user?->id,

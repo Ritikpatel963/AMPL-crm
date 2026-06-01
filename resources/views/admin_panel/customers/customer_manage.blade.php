@@ -117,10 +117,15 @@
             <div class="modal-body">
                 <form method="POST" action="{{ route('admin_panel.admin.customers.store') }}">
                     @csrf
-                    <input type="text" name="name" class="form-control mb-3" placeholder="Full Name" required>
-                    <input type="email" name="email" class="form-control mb-3" placeholder="Email" required>
-                    <input type="text" name="phone_number" class="form-control mb-3" placeholder="Phone Number">
-                    <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="Customer name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
+                        <input type="text" name="phone_number" class="form-control" placeholder="10-digit mobile number (e.g. 9876543210)" required maxlength="15">
+                        <div class="form-text text-muted">Customer will use this number to log in via OTP on the app.</div>
+                    </div>
 
                     <select name="agent_id" class="form-select mb-3">
                         <option value="">Assign agent later</option>

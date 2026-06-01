@@ -70,7 +70,7 @@ class User extends Authenticatable
 
     public function assignedAgent()
     {
-        return $this->hasOne(AgentCustomerAssignment::class, 'customer_id');
+        return $this->hasOne(AgentCustomerAssignment::class, 'customer_id')->latestOfMany();
     }
 
     public function sentMessages()

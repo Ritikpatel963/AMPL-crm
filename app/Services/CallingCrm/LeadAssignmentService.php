@@ -24,7 +24,9 @@ class LeadAssignmentService
 
         $userId = match ($campaign->distribution) {
             'equal', 'auto_assign' => $this->nextEqualAgentId($campaign),
-            'conditional' => $this->conditionalAgentId($campaign, $lead) ?? $this->nextEqualAgentId($campaign),
+            'conditional' => $this->conditionalAgentId($campaign, $lead)
+                ?? $this->conditionalFallbackAgentId($campaign)
+                ?? $this->nextEqualAgentId($campaign),
             'on_demand' => $forceOnDemand ? $this->nextEqualAgentId($campaign) : null,
             default => null,
         };
@@ -152,6 +154,19 @@ class LeadAssignmentService
         }
 
         return null;
+    }
+
+    private function conditionalFallbackAgentId(Campaign $campaign): ?int
+    {
+        $fallbackUserId = (int) ($campaign->settings['fallback_user_id'] ?? 0);
+
+        if (! $fallbackUserId) {
+            return null;
+        }
+
+        return $this->campaignAgentIds($campaign)->contains($fallbackUserId)
+            ? $fallbackUserId
+            : null;
     }
 
     private function campaignAgentIds(Campaign $campaign): Collection

@@ -115,24 +115,74 @@ class CallController extends Controller
 
     public function uploadRecording(Request $request, CallLog $call)
     {
+        Log::info('uploadRecording: Start processing upload', [
+            'call_id' => $call->id,
+            'user_id' => $request->user()?->id,
+            'user_role' => $request->user()?->role,
+        ]);
+
         abort_if(! $this->canAccessCall($request->user(), $call), 403);
 
-        $data = $request->validate([
-            'recording' => ['required', 'file', 'mimes:mp3,m4a,wav,amr,3gp,3gpp', 'max:51200'],
+        if (!$request->hasFile('recording')) {
+            Log::error('uploadRecording: No recording file present in request for call_id: ' . $call->id);
+            return response()->json([
+                'status' => false,
+                'message' => 'No recording file present in request'
+            ], 422);
+        }
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'recording' => ['required', 'file', 'max:51200'],
         ]);
 
-        $path = $data['recording']->store("calling-crm/recordings/{$call->id}", 'public');
-        $url = Storage::disk('public')->url($path);
+        if ($validator->fails()) {
+            Log::error('uploadRecording: Validation failed for call_id ' . $call->id . ': ' . json_encode($validator->errors()->all()));
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-        $call->update([
-            'recording_url' => $url,
-        ]);
+        try {
+            $file = $request->file('recording');
+            $originalName = $file->getClientOriginalName();
+            $mimeType = $file->getClientMimeType();
+            $size = $file->getSize();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Recording uploaded successfully',
-            'data' => $call->fresh(['lead', 'campaign', 'user']),
-        ]);
+            Log::info('uploadRecording: File details received', [
+                'call_id' => $call->id,
+                'filename' => $originalName,
+                'mime_type' => $mimeType,
+                'size' => $size,
+            ]);
+
+            $path = $file->store("calling-crm/recordings/{$call->id}", 'public');
+            $url = Storage::disk('public')->url($path);
+
+            $call->update([
+                'recording_url' => $url,
+            ]);
+
+            Log::info("uploadRecording: Recording uploaded successfully for call_id {$call->id}", [
+                'path' => $path,
+                'url' => $url,
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Recording uploaded successfully',
+                'data' => $call->fresh(['lead', 'campaign', 'user']),
+            ]);
+        } catch (\Exception $e) {
+            Log::error("uploadRecording: Error saving recording for call_id {$call->id}: " . $e->getMessage(), [
+                'exception' => $e
+            ]);
+            return response()->json([
+                'status' => false,
+                'message' => 'Internal server error uploading recording'
+            ], 500);
+        }
     }
 
     public function webhook(Request $request)
@@ -223,6 +273,21 @@ class CallController extends Controller
 
     private function canAccessCall($user, CallLog $call): bool
     {
+        if (!$user) {
+            return Auth::guard('admin')->check();
+        }
+
+        if ($user->role === 'subadmin') {
+            return true;
+        }
+
+        if ($user->role === 'agent') {
+            // An agent can ALWAYS access a call they initiated/made themselves
+            if ((int) $call->user_id === (int) $user->id) {
+                return true;
+            }
+        }
+
         $call->loadMissing('lead:id,assigned_user_id');
 
         return $call->lead ? $this->canAccessLead($user, $call->lead) : false;

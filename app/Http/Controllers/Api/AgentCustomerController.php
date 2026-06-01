@@ -90,6 +90,10 @@ class AgentCustomerController extends Controller
             ->first();
 
         if (!$relation) {
+            $relation = $this->copyAssignmentFromMatchingCustomerPhone($user);
+        }
+
+        if (!$relation) {
             return response()->json([
                 'status' => false,
                 'message' => 'Agent not assigned yet',
@@ -102,5 +106,53 @@ class AgentCustomerController extends Controller
             'agent_id' => $relation->agent_id,
             'agent' => $relation->agent,
         ]);
+    }
+
+    private function copyAssignmentFromMatchingCustomerPhone(User $user): ?AgentCustomerAssignment
+    {
+        if (!$user->phone_number) {
+            return null;
+        }
+
+        $candidates = $this->phoneCandidates($user->phone_number);
+        $matchedCustomerIds = User::query()
+            ->where('role', 'customer')
+            ->where('id', '!=', $user->id)
+            ->whereIn('phone_number', $candidates)
+            ->pluck('id');
+
+        if ($matchedCustomerIds->isEmpty()) {
+            return null;
+        }
+
+        $matchedRelation = AgentCustomerAssignment::whereIn('customer_id', $matchedCustomerIds)
+            ->latest('id')
+            ->first();
+
+        if (!$matchedRelation) {
+            return null;
+        }
+
+        AgentCustomerAssignment::where('customer_id', $user->id)->delete();
+
+        return AgentCustomerAssignment::create([
+            'customer_id' => $user->id,
+            'agent_id' => $matchedRelation->agent_id,
+        ])->load('agent:id,name,email,phone_number');
+    }
+
+    private function phoneCandidates(string $raw): array
+    {
+        $digits = preg_replace('/\D+/', '', trim($raw));
+        $withoutCountry = preg_replace('/^91/', '', $digits);
+
+        return array_values(array_unique(array_filter([
+            trim($raw),
+            ltrim(trim($raw), '+'),
+            $digits,
+            $withoutCountry,
+            '91' . $withoutCountry,
+            '+91' . $withoutCountry,
+        ])));
     }
 }

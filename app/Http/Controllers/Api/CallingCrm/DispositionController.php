@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Disposition;
 use App\Models\Lead;
 use App\Models\LeadDisposition;
+use App\Models\LeadStage;
+use App\Models\StageTag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -54,6 +56,8 @@ class DispositionController extends Controller
 
     public function disposeLead(Request $request, Lead $lead)
     {
+        $this->normalizeMobileDispositionPayload($request, $lead);
+
         $data = $request->validate([
             'call_log_id' => ['nullable', 'exists:call_logs,id'],
             'user_id' => ['nullable', 'exists:users,id'],
@@ -65,6 +69,9 @@ class DispositionController extends Controller
             'remark' => ['nullable', 'string'],
             'follow_up_at' => ['nullable', 'date'],
             'deal_amount' => ['nullable', 'numeric', 'min:0'],
+            'not_connected_reason' => ['nullable', 'string'],
+            'copy_to_other_campaign' => ['sometimes', 'boolean'],
+            'move_to_other_campaign' => ['sometimes', 'boolean'],
         ]);
 
         $leadDisposition = DB::transaction(function () use ($lead, $data) {
@@ -111,6 +118,16 @@ class DispositionController extends Controller
 
             $lead->update($leadUpdates);
 
+            if (! empty($data['call_log_id'])) {
+                $lead->callLogs()
+                    ->whereKey($data['call_log_id'])
+                    ->update([
+                        'disposition_id' => $data['disposition_id'] ?? null,
+                        'status' => $data['call_status'],
+                        'notes' => $data['remark'] ?? null,
+                    ]);
+            }
+
             $lead->timelineEvents()->create([
                 'user_id' => auth()->id(),
                 'event_type' => 'lead_disposed',
@@ -128,6 +145,73 @@ class DispositionController extends Controller
             'message' => 'Lead disposed successfully',
             'data' => $leadDisposition->load(['lead', 'disposition', 'toStage', 'tag']),
         ], 201);
+    }
+
+    private function normalizeMobileDispositionPayload(Request $request, Lead $lead): void
+    {
+        $updates = [];
+
+        if (! $request->filled('call_status') && $request->has('call_connected')) {
+            $updates['call_status'] = $request->boolean('call_connected') ? 'connected' : 'not_connected';
+        }
+
+        if (! $request->filled('call_log_id') && $request->filled('call_id')) {
+            $updates['call_log_id'] = $request->input('call_id');
+        }
+
+        if (! $request->filled('remark') && $request->filled('dispose_remark')) {
+            $updates['remark'] = $request->input('dispose_remark');
+        }
+
+        if (! $request->filled('follow_up_at') && $request->filled('next_follow_up_at')) {
+            $updates['follow_up_at'] = $request->input('next_follow_up_at');
+        }
+
+        if (! $request->filled('remark') && $request->filled('not_connected_reason')) {
+            $updates['remark'] = $request->input('not_connected_reason');
+        } elseif ($request->filled('not_connected_reason') && $request->filled('remark')) {
+            $updates['remark'] = trim($request->input('not_connected_reason') . ' - ' . $request->input('remark'), " -");
+        }
+
+        $stage = $this->resolveStage($lead, $request->input('stage'));
+        if (! $request->filled('stage_id') && $stage) {
+            $updates['stage_id'] = $stage->id;
+        }
+
+        $tag = $this->resolveTag($stage, $request->input('tag'));
+        if (! $request->filled('tag_id') && $tag) {
+            $updates['tag_id'] = $tag->id;
+        }
+
+        if ($updates !== []) {
+            $request->merge($updates);
+        }
+    }
+
+    private function resolveStage(Lead $lead, mixed $stageName): ?LeadStage
+    {
+        if (! is_string($stageName) || trim($stageName) === '') {
+            return null;
+        }
+
+        $pipelineId = $lead->pipeline_id ?: $lead->campaign?->pipeline_id;
+
+        return LeadStage::query()
+            ->when($pipelineId, fn ($query) => $query->where('pipeline_id', $pipelineId))
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($stageName))])
+            ->first();
+    }
+
+    private function resolveTag(?LeadStage $stage, mixed $tagName): ?StageTag
+    {
+        if (! $stage || ! is_string($tagName) || trim($tagName) === '') {
+            return null;
+        }
+
+        return StageTag::query()
+            ->where('stage_id', $stage->id)
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($tagName))])
+            ->first();
     }
 
     private function validateDisposition(Request $request): array

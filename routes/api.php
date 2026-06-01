@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AgentCustomerController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CustomerCallController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\VendorAuthController;
@@ -43,6 +44,9 @@ Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1'])->group(funct
     // Customers
     Route::get('/agent/customers', [AgentCustomerController::class, 'getAssignedCustomers'])->middleware('api.role:agent');
     Route::get('/customer/agent', [AgentCustomerController::class, 'getCustomerAgent'])->middleware('api.role:customer');
+    Route::post('/customer/calls/start', [CustomerCallController::class, 'start'])->middleware('api.role:customer');
+    Route::patch('/customer/calls/{call}', [CustomerCallController::class, 'update']);
+    Route::post('/customer/calls/{call}/recording', [CustomerCallController::class, 'uploadRecording']);
 
     // Products
     Route::get('/products', [ProductController::class, 'index']);
@@ -53,8 +57,8 @@ Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1'])->group(funct
     Route::get('/messages/{user_id}', [MessageController::class, 'getMessages']);
     Route::post('/messages/seen/{user_id}', [MessageController::class, 'markAsSeen']);
     Route::get('/message/latest/{user_id}', [MessageController::class, 'getLatestMessage']);
-    Route::post('/messages/send', [MessageController::class, 'sendMessage'])->middleware('throttle:30,1');
-    Route::post('/messages/send-product', [MessageController::class, 'sendProduct'])->middleware('throttle:30,1');
+    Route::post('/messages/send', [MessageController::class, 'sendMessage'])->middleware('throttle:180,1');
+    Route::post('/messages/send-product', [MessageController::class, 'sendProduct'])->middleware('throttle:180,1');
 
     // VENDOR PRODUCTS
     Route::get('/categories', [CategoryController::class, 'index']);

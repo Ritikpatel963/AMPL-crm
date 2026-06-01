@@ -154,7 +154,7 @@
     let lastLeads = [];
     let contactDataTable = null;
     const activeFilters = {};
-    
+
     const formPage = root.querySelector('[data-contact-form-page]');
     const resultsPage = root.querySelector('[data-contact-results-page]');
     const searchForm = root.querySelector('[data-contact-search-form]');
@@ -500,9 +500,9 @@
               <div class="expanded-section">
                 <h4>Latest Remark</h4>
                 ${detailRows([
-                  { label: 'Remark', value: latestDisposition.remark || '---' },
-                  { label: 'Date', value: formatDateTime(latestDisposition.disposed_at || latestDisposition.created_at) }
-                ])}
+        { label: 'Remark', value: latestDisposition.remark || '---' },
+        { label: 'Date', value: formatDateTime(latestDisposition.disposed_at || latestDisposition.created_at) }
+      ])}
               </div>
               <div class="expanded-section">
                 <h4>Other Details</h4>
@@ -587,25 +587,25 @@
         contactDataTable = null;
       }
       tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--calling-crm-muted);">Loading leads...</td></tr>';
-      
+
       const params = new URLSearchParams({ page: currentPage, per_page: perPage });
       Object.entries(activeFilters).forEach(function (entry) {
         if (entry[1]) params.set(entry[0], entry[1]);
       });
 
       crm('leads?' + params.toString()).then(function (payload) {
-        const responseData = payload.data || payload; 
+        const responseData = payload.data || payload;
         const leads = Array.isArray(responseData.data) ? responseData.data : (Array.isArray(responseData) ? responseData : []);
         lastResponse = responseData;
         lastLeads = leads;
         updatePagination(responseData, leads);
-        
+
         if (!leads.length) {
           tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--calling-crm-muted);">No leads found matching your criteria.</td></tr>';
           return;
         }
-        
-        tbody.innerHTML = leads.map(function(lead) {
+
+        tbody.innerHTML = leads.map(function (lead) {
           return `
             <tr class="contact-result-row" data-lead-id="${lead.id}">
               <td style="text-align: center;"><input type="checkbox" value="${lead.id}" data-contact-row-select></td>
@@ -626,7 +626,7 @@
           `;
         }).join('');
         refreshDataTable();
-      }).catch(function() {
+      }).catch(function () {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px; color: red;">Failed to load leads.</td></tr>';
       });
     }
@@ -684,26 +684,26 @@
     });
 
     if (paginationSelect) {
-      paginationSelect.addEventListener('change', function(e) {
+      paginationSelect.addEventListener('change', function (e) {
         perPage = parseInt(e.target.value, 10);
         currentPage = 1;
         fetchContacts();
       });
     }
     if (prevBtn) {
-      prevBtn.addEventListener('click', function() {
+      prevBtn.addEventListener('click', function () {
         if (currentPage > 1) { currentPage--; fetchContacts(); }
       });
     }
     if (nextBtn) {
-      nextBtn.addEventListener('click', function() {
+      nextBtn.addEventListener('click', function () {
         if (lastResponse?.last_page && currentPage >= lastResponse.last_page) return;
         currentPage++; fetchContacts();
       });
     }
 
     // Three-dot menu functionality
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
       const menuBtn = e.target.closest('.action-menu-btn');
       if (menuBtn) {
         e.preventDefault();
@@ -714,23 +714,23 @@
         menuLayer.classList.add('open');
         return;
       }
-      
+
       const menuItem = e.target.closest('.contact-menu-item');
       if (menuItem && currentMenuLeadId) {
         const action = menuItem.getAttribute('data-action');
         if (action === 'delete') {
-          if(confirm('Are you sure you want to delete this lead?')) {
-            crm('leads/' + currentMenuLeadId, { method: 'DELETE' }).then(function() {
+          if (confirm('Are you sure you want to delete this lead?')) {
+            crm('leads/' + currentMenuLeadId, { method: 'DELETE' }).then(function () {
               toast('Lead deleted successfully.');
               fetchContacts();
             });
           }
         } else if (action === 'edit') {
-           toast('Edit lead feature coming soon!');
+          toast('Edit lead feature coming soon!');
         } else if (action === 'open') {
-           toast('Open lead feature coming soon!');
+          toast('Open lead feature coming soon!');
         } else if (action === 'history') {
-           toast('View Dispose History coming soon!');
+          toast('View Dispose History coming soon!');
         }
         menuLayer.classList.remove('open');
         currentMenuLeadId = null;
@@ -773,7 +773,7 @@
     leadForm?.addEventListener('submit', submitLeadModal, true);
 
     bindUploadButtons();
-    
+
     showFormPage();
   }
 
@@ -781,42 +781,605 @@
     if (document.body.dataset.crmUploadBound === '1') return;
     document.body.dataset.crmUploadBound = '1';
 
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.csv,.xls,.xlsx';
-    fileInput.hidden = true;
-    document.body.appendChild(fileInput);
+    var ALLOWED_EXTENSIONS = ['csv', 'xls', 'xlsx'];
+    var MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
+    var FIELD_OPTIONS = [
+      { value: 'skip', label: 'Skip' },
+      { value: 'name', label: 'Name' },
+      { value: 'phone', label: 'Phone' },
+      { value: 'email', label: 'Email' },
+      { value: 'company_name', label: 'Company Name' },
+      { value: 'address', label: 'Address' },
+      { value: 'city', label: 'City' },
+      { value: 'state', label: 'State' },
+      { value: 'pincode', label: 'Pincode' },
+      { value: 'gst', label: 'GST' }
+    ];
 
-    document.querySelectorAll('.upload-browse-btn').forEach(function (button) {
-      button.addEventListener('click', function () {
-        fileInput.value = '';
-        fileInput.click();
-      });
-    });
+    function humanFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
 
-    document.querySelectorAll('[data-import-sample-link]').forEach(function (link) {
-      link.href = window.CallingCrmApi.baseUrl + '/imports/sample';
-    });
+    function fileExtension(name) {
+      return (name || '').split('.').pop().toLowerCase();
+    }
 
-    fileInput.addEventListener('change', function () {
-      const file = fileInput.files && fileInput.files[0];
-      const campaignId = document.querySelector('[data-crm-campaign-select]')?.value
-        || document.querySelector('[data-contact-campaign-select]')?.value
-        || document.querySelector('.campaigns-body select')?.value
-        || state.campaigns[0]?.id;
-      if (!file) return;
-      if (!campaignId) {
-        toast('Create or select a campaign before uploading leads.', 'error');
-        return;
+    function escapeHtml(unsafe) {
+      if (!unsafe) return '';
+      return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Initialize each upload modal independently
+    document.querySelectorAll('[data-upload-modal]').forEach(function (modal) {
+      var currentStep = 1;
+      var selectedFile = null;
+      var previewData = null;
+      var mappingState = {};
+
+      var dropzone = modal.querySelector('[data-upload-dropzone]');
+      var filePreview = modal.querySelector('[data-upload-file-preview]');
+      var fileName = modal.querySelector('[data-upload-file-name]');
+      var fileSize = modal.querySelector('[data-upload-file-size]');
+      var fileRemove = modal.querySelector('[data-upload-file-remove]');
+      var errorMsg = modal.querySelector('[data-upload-error]');
+      var campaignSelect = modal.querySelector('[data-upload-campaign-select]');
+      var nextBtn = modal.querySelector('[data-upload-next]');
+      var backBtn = modal.querySelector('[data-upload-back]');
+      var mappingBody = modal.querySelector('[data-upload-mapping-body]');
+      var rowCount = modal.querySelector('[data-upload-row-count]');
+      var progressArea = modal.querySelector('[data-upload-progress]');
+      var progressDetail = modal.querySelector('[data-upload-progress-detail]');
+      var progressBar = modal.querySelector('[data-upload-progress-bar]');
+      var resultArea = modal.querySelector('[data-upload-result]');
+      var resultIcon = modal.querySelector('[data-upload-result-icon]');
+      var resultTitle = modal.querySelector('[data-upload-result-title]');
+      var resultDesc = modal.querySelector('[data-upload-result-desc]');
+      var resultStats = modal.querySelector('[data-upload-result-stats]');
+
+      // Hidden file input per modal
+      var fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.csv,.xls,.xlsx';
+      fileInput.hidden = true;
+      modal.appendChild(fileInput);
+
+      // Populate campaign select when campaigns are loaded
+      function populateCampaigns() {
+        if (!campaignSelect || !state.campaigns.length) return;
+        var current = campaignSelect.value;
+        campaignSelect.innerHTML = '<option value="">Choose a campaign...</option>';
+        state.campaigns.forEach(function (campaign) {
+          var opt = document.createElement('option');
+          opt.value = campaign.id;
+          opt.textContent = campaign.name;
+          campaignSelect.appendChild(opt);
+        });
+        // Auto-select from data attribute (campaign detail page)
+        var autoId = modal.getAttribute('data-upload-campaign-id');
+        if (autoId) {
+          campaignSelect.value = autoId;
+        } else if (current) {
+          campaignSelect.value = current;
+        }
+        updateNextState();
       }
 
-      const form = new FormData();
-      form.append('file', file);
-      form.append('name', file.name);
-      crm('campaigns/' + campaignId + '/imports', { method: 'POST', body: form }).then(function () {
-        toast('Import file queued successfully.');
-        document.querySelectorAll('[data-upload-modal]').forEach(function (modal) {
+      // Wait for campaigns to load then populate
+      loadCampaigns().then(populateCampaigns);
+
+      // Sample file link
+      modal.querySelectorAll('[data-import-sample-link]').forEach(function (link) {
+        link.href = window.CallingCrmApi.baseUrl + '/imports/sample';
+      });
+
+      // --- Step management ---
+      function goToStep(step) {
+        currentStep = step;
+        modal.querySelectorAll('[data-upload-step]').forEach(function (el) {
+          el.style.display = el.getAttribute('data-upload-step') == step ? '' : 'none';
+        });
+        // Update step indicators
+        modal.querySelectorAll('[data-upload-step-indicator]').forEach(function (el) {
+          var s = parseInt(el.getAttribute('data-upload-step-indicator'));
+          el.classList.remove('active', 'done');
+          if (s === step) el.classList.add('active');
+          else if (s < step) el.classList.add('done');
+        });
+        modal.querySelectorAll('.upload-step-divider').forEach(function (el, i) {
+          el.classList.toggle('done', i + 1 < step);
+        });
+        // Update buttons
+        if (step === 1) {
+          backBtn.style.display = 'none';
+          nextBtn.style.display = '';
+          nextBtn.textContent = 'Next';
+          nextBtn.className = 'upload-btn-next';
+          nextBtn.disabled = !(selectedFile && campaignSelect && campaignSelect.value);
+        } else if (step === 2) {
+          backBtn.style.display = '';
+          nextBtn.style.display = '';
+          nextBtn.textContent = 'Upload';
+          nextBtn.className = 'upload-btn-submit';
+          nextBtn.disabled = !hasPhoneMapping();
+        } else if (step === 3) {
+          backBtn.style.display = 'none';
+          nextBtn.style.display = 'none';
+        }
+      }
+
+      function hasPhoneMapping() {
+        var selects = mappingBody ? mappingBody.querySelectorAll('.upload-mapping-select') : [];
+        for (var i = 0; i < selects.length; i++) {
+          if (selects[i].value === 'phone') return true;
+        }
+        return false;
+      }
+
+      function updateNextState() {
+        if (currentStep === 1) {
+          nextBtn.disabled = !(selectedFile && campaignSelect && campaignSelect.value);
+        } else if (currentStep === 2) {
+          nextBtn.disabled = !hasPhoneMapping();
+        }
+      }
+
+      // --- File validation ---
+      function validateFile(file) {
+        if (!file) return 'Please select a file.';
+        var ext = fileExtension(file.name);
+        if (ALLOWED_EXTENSIONS.indexOf(ext) === -1) {
+          return 'Invalid file type ".' + ext + '". Only .csv, .xls, .xlsx files are allowed.';
+        }
+        if (file.size > MAX_FILE_SIZE) {
+          return 'File size (' + humanFileSize(file.size) + ') exceeds the 3MB limit.';
+        }
+        return null;
+      }
+
+      function showError(msg) {
+        if (errorMsg) {
+          errorMsg.textContent = msg || '';
+          errorMsg.classList.toggle('visible', !!msg);
+        }
+      }
+
+      function showFilePreview(file) {
+        if (fileName) fileName.textContent = file.name;
+        if (fileSize) fileSize.textContent = humanFileSize(file.size);
+        if (filePreview) filePreview.classList.add('visible');
+        if (dropzone) dropzone.style.display = 'none';
+      }
+
+      function clearFilePreview() {
+        if (filePreview) filePreview.classList.remove('visible');
+        if (dropzone) dropzone.style.display = '';
+        selectedFile = null;
+        fileInput.value = '';
+        showError('');
+        updateNextState();
+      }
+
+      function handleFile(file) {
+        var error = validateFile(file);
+        if (error) {
+          showError(error);
+          selectedFile = null;
+          updateNextState();
+          return;
+        }
+        showError('');
+        selectedFile = file;
+        showFilePreview(file);
+        updateNextState();
+      }
+
+      // --- Browse button ---
+      if (dropzone) {
+        dropzone.querySelectorAll('.upload-browse-btn').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            fileInput.value = '';
+            fileInput.click();
+          });
+        });
+      }
+
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+          handleFile(fileInput.files[0]);
+        }
+      });
+
+      if (fileRemove) {
+        fileRemove.addEventListener('click', clearFilePreview);
+      }
+
+      // --- Drag & Drop ---
+      if (dropzone) {
+        var dragCounter = 0;
+        dropzone.addEventListener('dragenter', function (e) {
+          e.preventDefault();
+          dragCounter++;
+          dropzone.classList.add('dragover');
+        });
+        dropzone.addEventListener('dragover', function (e) {
+          e.preventDefault();
+        });
+        dropzone.addEventListener('dragleave', function (e) {
+          e.preventDefault();
+          dragCounter--;
+          if (dragCounter <= 0) {
+            dragCounter = 0;
+            dropzone.classList.remove('dragover');
+          }
+        });
+        dropzone.addEventListener('drop', function (e) {
+          e.preventDefault();
+          dragCounter = 0;
+          dropzone.classList.remove('dragover');
+          var files = e.dataTransfer && e.dataTransfer.files;
+          if (files && files.length) {
+            handleFile(files[0]);
+          }
+        });
+      }
+
+      // --- Campaign select change ---
+      if (campaignSelect) {
+        campaignSelect.addEventListener('change', updateNextState);
+      }
+
+      // --- Next / Back buttons ---
+      if (nextBtn) {
+        nextBtn.addEventListener('click', function () {
+          if (currentStep === 1) {
+            if (!selectedFile || !campaignSelect.value) return;
+            // Go to step 2: preview the file
+            goToStep(2);
+            fetchPreview();
+          } else if (currentStep === 2) {
+            if (!hasPhoneMapping()) {
+              toast('Please map at least the Phone column.', 'error');
+              return;
+            }
+            goToStep(3);
+            doUpload();
+          }
+        });
+      }
+
+      if (backBtn) {
+        backBtn.addEventListener('click', function () {
+          if (currentStep === 2) {
+            goToStep(1);
+          }
+        });
+      }
+
+      // --- Preview API (Step 2) ---
+      function fetchPreview() {
+        if (!mappingBody) return;
+        mappingBody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--calling-crm-muted);">Analyzing file...</td></tr>';
+
+        var form = new FormData();
+        form.append('file', selectedFile);
+
+        crm('campaigns/' + campaignSelect.value + '/imports/preview', { method: 'POST', body: form })
+          .then(function (payload) {
+            var data = payload.data || payload;
+            previewData = data;
+            var headers = data.headers || [];
+            var sampleRows = data.sample_rows || [];
+            var suggested = data.suggested_mapping || {};
+
+            if (rowCount) rowCount.textContent = data.total_rows_hint || sampleRows.length;
+
+            mappingBody.innerHTML = headers.map(function (header) {
+              var firstValue = sampleRows[0] ? (sampleRows[0][header] || '') : '';
+              var suggestedField = suggested[header] || 'skip';
+
+              var optionsHtml = FIELD_OPTIONS.map(function (opt) {
+                var sel = opt.value === suggestedField ? ' selected' : '';
+                return '<option value="' + opt.value + '"' + sel + '>' + escapeHtml(opt.label) + '</option>';
+              }).join('');
+
+              return '<tr>'
+                + '<td class="mapping-header-name" title="' + escapeHtml(header) + '">' + escapeHtml(header) + '</td>'
+                + '<td><select class="upload-mapping-select" data-mapping-header="' + escapeHtml(header) + '">' + optionsHtml + '</select></td>'
+                + '<td class="upload-mapping-preview" title="' + escapeHtml(firstValue) + '">' + escapeHtml(firstValue || '—') + '</td>'
+                + '</tr>';
+            }).join('');
+
+            // Track mapping changes
+            mappingBody.querySelectorAll('.upload-mapping-select').forEach(function (sel) {
+              sel.addEventListener('change', updateNextState);
+            });
+
+            updateNextState();
+          })
+          .catch(function (err) {
+            mappingBody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#dc2626;">Failed to parse file. ' + escapeHtml(err.message || '') + '</td></tr>';
+          });
+      }
+
+      // --- Upload with progress (Step 3) ---
+      function doUpload() {
+        // Show progress, hide result
+        if (progressArea) { progressArea.classList.add('visible'); progressArea.style.display = ''; }
+        if (resultArea) { resultArea.classList.remove('visible'); resultArea.style.display = 'none'; }
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressDetail) progressDetail.textContent = 'Preparing upload...';
+
+        // Build mapping from selects
+        var mapping = {};
+        if (mappingBody) {
+          mappingBody.querySelectorAll('.upload-mapping-select').forEach(function (sel) {
+            mapping[sel.getAttribute('data-mapping-header')] = sel.value;
+          });
+        }
+
+        var form = new FormData();
+        form.append('file', selectedFile);
+        form.append('name', selectedFile.name);
+        if (Object.keys(mapping).length) {
+          // Send mapping as JSON-encoded field
+          Object.keys(mapping).forEach(function (key) {
+            form.append('mapping[' + key + ']', mapping[key]);
+          });
+        }
+
+        var campaignId = campaignSelect.value;
+        var url = window.CallingCrmApi.baseUrl + '/campaigns/' + campaignId + '/imports';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-CSRF-TOKEN', window.CallingCrmApi.csrfToken);
+
+        xhr.upload.addEventListener('progress', function (e) {
+          if (e.lengthComputable) {
+            var pct = Math.round((e.loaded / e.total) * 100);
+            if (progressBar) progressBar.style.width = pct + '%';
+            if (progressDetail) progressDetail.textContent = 'Uploading... ' + pct + '%';
+          }
+        });
+
+        xhr.addEventListener('load', function () {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            var resp;
+            try {
+              resp = JSON.parse(xhr.responseText);
+            } catch (e) {
+              showResult(false, null, 'Invalid server response.');
+              return;
+            }
+            if (resp && resp.data && resp.data.id) {
+              if (progressDetail) progressDetail.textContent = 'Processing file data...';
+              if (progressBar) {
+                progressBar.style.width = '100%';
+                progressBar.classList.add('pulse-anim'); // Add a pulsing effect via CSS later
+              }
+              pollImportStatus(resp.data.id);
+            } else {
+              showResult(false, null, 'No import ID returned.');
+            }
+          } else {
+            if (progressArea) { progressArea.classList.remove('visible'); progressArea.style.display = 'none'; }
+            var msg = 'Upload failed.';
+            try {
+              var resp = JSON.parse(xhr.responseText);
+              msg = resp.message || msg;
+            } catch (e) { /* ignore */ }
+            showResult(false, null, msg);
+          }
+        });
+
+        xhr.addEventListener('error', function () {
+          if (progressArea) { progressArea.classList.remove('visible'); progressArea.style.display = 'none'; }
+          showResult(false, null, 'Network error. Please check your connection.');
+        });
+
+        xhr.send(form);
+      }
+
+      function pollImportStatus(importId) {
+        var pollUrl = window.CallingCrmApi.baseUrl + '/imports/' + importId;
+        
+        function check() {
+          crm('imports/' + importId).then(function(payload) {
+            var data = payload.data || payload;
+            if (data.status === 'completed' || data.status === 'failed' || data.status === 'partially_failed') {
+               if (progressArea) { progressArea.classList.remove('visible'); progressArea.style.display = 'none'; }
+               showResult(true, data);
+            } else {
+               if (progressDetail) {
+                 var processed = (data.created_rows || 0) + (data.merged_rows || 0) + (data.failed_rows || 0);
+                 var total = data.total_rows || 0;
+                 if (total > 0) {
+                    progressDetail.textContent = 'Processing: ' + processed + ' / ' + total + ' rows...';
+                 }
+               }
+               setTimeout(check, 2000);
+            }
+          }).catch(function(err) {
+             if (progressArea) { progressArea.classList.remove('visible'); progressArea.style.display = 'none'; }
+             showResult(false, null, 'Failed to fetch status: ' + (err.message || 'Error'));
+          });
+        }
+        
+        setTimeout(check, 2000);
+      }
+
+      function showResult(success, importData, errorMessage) {
+        if (resultArea) { resultArea.classList.add('visible'); resultArea.style.display = ''; }
+
+        if (success && importData) {
+          var isPerfect = importData.failed_rows === 0;
+          
+          if (resultIcon) resultIcon.innerHTML = isPerfect ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-triangle-exclamation"></i>';
+          if (resultTitle) resultTitle.textContent = isPerfect ? 'Import Completed' : 'Import Finished with Errors';
+          
+          var desc = 'Processed ' + (importData.total_rows || 0) + ' rows.';
+          if (resultDesc) resultDesc.textContent = desc;
+          
+          if (resultStats) {
+            resultStats.innerHTML = 
+              '<div class="stat-pill success"><span>' + (importData.created_rows || 0) + '</span> Valid</div>' +
+              '<div class="stat-pill error"><span>' + (importData.failed_rows || 0) + '</span> Failed / Duplicates</div>';
+              
+            if (importData.failed_rows > 0 && importData.rows && importData.rows.length > 0) {
+               var failedRows = importData.rows.filter(function(r) { return r.status === 'failed'; });
+               if (failedRows.length > 0) {
+                  var tableHtml = '<div class="upload-failed-table-wrap">' +
+                                    '<table class="upload-failed-table">' +
+                                      '<thead><tr><th>Row</th><th>Phone</th><th>Issue Details</th></tr></thead>' +
+                                      '<tbody>';
+                  
+                  failedRows.slice(0, 50).forEach(function(row) {
+                     var payload = row.raw_payload || {};
+                     // Try to extract a phone number from the payload values
+                     var phoneVal = '—';
+                     Object.keys(payload).forEach(function(key) {
+                        var k = key.toLowerCase();
+                        if (k.indexOf('phone') > -1 || k.indexOf('mobile') > -1 || k.indexOf('contact') > -1) {
+                           phoneVal = payload[key];
+                        }
+                     });
+                     if (phoneVal === '—' && Object.values(payload).length > 0) {
+                        // fallback to first column or something
+                        phoneVal = Object.values(payload)[0] || '—';
+                     }
+                     
+                     tableHtml += '<tr>' +
+                                    '<td>' + (row.row_number || '-') + '</td>' +
+                                    '<td>' + escapeHtml(phoneVal) + '</td>' +
+                                    '<td><span class="failed-reason-badge">' + escapeHtml(row.failure_reason || 'Unknown Error') + '</span></td>' +
+                                  '</tr>';
+                  });
+                  
+                  tableHtml += '</tbody></table></div>';
+                  if (failedRows.length > 50) {
+                      tableHtml += '<div style="font-size: 12px; color: #64748b; margin-top: 8px;">Showing first 50 failed rows. Please download to see all.</div>';
+                  }
+                  
+                  resultStats.innerHTML += tableHtml;
+               }
+            }
+          }
+
+          var actionsHtml = '<button type="button" class="upload-btn-another" data-upload-another>Upload Another File</button>';
+          
+          if (importData.failed_rows > 0) {
+             var exportUrl = window.CallingCrmApi.baseUrl + '/campaigns/' + importData.campaign_id + '/imports/' + importData.id + '/failed-rows/export';
+             actionsHtml = '<a href="' + exportUrl + '" class="upload-btn-download-failed" target="_blank"><i class="fa-solid fa-download"></i> Download Failed Data</a>' + actionsHtml;
+          }
+
+          var actionsRow = modal.querySelector('[data-upload-actions]');
+          if (actionsRow) {
+            actionsRow.innerHTML = actionsHtml;
+            actionsRow.querySelector('[data-upload-another]').addEventListener('click', resetModal);
+          }
+
+          toast(isPerfect ? 'Import completed successfully.' : 'Import completed with some failed rows.', isPerfect ? 'success' : 'warning');
+        } else {
+          if (resultIcon) resultIcon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+          if (resultTitle) resultTitle.textContent = 'Upload Failed';
+          if (resultDesc) resultDesc.textContent = errorMessage || 'Something went wrong. Please try again.';
+          if (resultStats) resultStats.innerHTML = '';
+
+          var actionsRow = modal.querySelector('[data-upload-actions]');
+          if (actionsRow) {
+            actionsRow.innerHTML = '<button type="button" class="upload-btn-back" data-upload-retry>Try Again</button>';
+            actionsRow.querySelector('[data-upload-retry]').addEventListener('click', function () {
+              goToStep(1);
+            });
+          }
+        }
+      }
+
+      // --- Reset modal ---
+      function resetModal() {
+        currentStep = 1;
+        selectedFile = null;
+        previewData = null;
+        mappingState = {};
+        clearFilePreview();
+
+        if (mappingBody) mappingBody.innerHTML = '';
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressArea) { progressArea.classList.add('visible'); progressArea.style.display = ''; }
+        if (resultArea) { resultArea.classList.remove('visible'); resultArea.style.display = 'none'; }
+
+        // Restore action buttons
+        var actionsRow = modal.querySelector('[data-upload-actions]');
+        if (actionsRow) {
+          actionsRow.innerHTML = '<button type="button" class="upload-btn-back" data-upload-back style="display:none;">Back</button>'
+            + '<button type="button" class="upload-btn-next" data-upload-next disabled>Next</button>';
+          // Re-bind
+          backBtn = actionsRow.querySelector('[data-upload-back]');
+          nextBtn = actionsRow.querySelector('[data-upload-next]');
+          if (nextBtn) {
+            nextBtn.addEventListener('click', function () {
+              if (currentStep === 1) {
+                if (!selectedFile || !campaignSelect.value) return;
+                goToStep(2);
+                fetchPreview();
+              } else if (currentStep === 2) {
+                if (!hasPhoneMapping()) {
+                  toast('Please map at least the Phone column.', 'error');
+                  return;
+                }
+                goToStep(3);
+                doUpload();
+              }
+            });
+          }
+          if (backBtn) {
+            backBtn.addEventListener('click', function () {
+              if (currentStep === 2) goToStep(1);
+            });
+          }
+        }
+
+        goToStep(1);
+        populateCampaigns();
+      }
+
+      // Close modal → reset
+      modal.querySelectorAll('[data-upload-close]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
           modal.classList.remove('open');
+          setTimeout(resetModal, 300);
+        });
+      });
+
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) {
+          modal.classList.remove('open');
+          setTimeout(resetModal, 300);
+        }
+      });
+
+      // Open buttons for this modal
+      document.querySelectorAll('[data-upload-open]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          modal.classList.add('open');
+          populateCampaigns();
+        });
+      });
+
+      // Campaign detail page: "Upload Excel Sheet" in action menu
+      document.querySelectorAll('[data-detail-upload-open]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          modal.classList.add('open');
+          populateCampaigns();
         });
       });
     });
@@ -1609,17 +2172,10 @@
         settings: {
           duplicate_check_scope: duplicacyScope ? duplicacyScope.value : 'campaign',
           duplicate_action: duplicacyAction ? duplicacyAction.value : 'ignore',
-          fallback_user_id: pendingFallbackUserId
-        }
-      };
-
-      crm('campaigns', { method: 'POST', body: payload }).then(function (res) {
-        const campaign = unwrap(res);
-        const ruleRequests = selectedDistribution === 'conditional' && campaign?.id
-          ? pendingConditionalRules.map(function (rule, index) {
-            return crm('campaigns/' + campaign.id + '/assignment-rules', {
-              method: 'POST',
-              body: {
+          fallback_user_id: pendingFallbackUserId,
+          conditional_rules: selectedDistribution === 'conditional'
+            ? pendingConditionalRules.map(function (rule, index) {
+              return {
                 name: 'Condition ' + (index + 1),
                 user_id: rule.user_id,
                 condition_field: rule.condition_field,
@@ -1627,20 +2183,21 @@
                 condition_value: rule.condition_value,
                 sort_order: index + 1,
                 is_active: true
-              }
-            });
-          })
-          : [];
+              };
+            })
+            : []
+        }
+      };
 
-        return Promise.all(ruleRequests).then(function () {
-          toast('Campaign created successfully.');
+      crm('campaigns', { method: 'POST', body: payload }).then(function (res) {
+        unwrap(res);
+        toast('Campaign created successfully.');
         if (campaignBackdrop) campaignBackdrop.classList.remove('open');
-          if (typeof afterCreateRefresh === 'function') {
-            afterCreateRefresh();
-          } else {
-            loadCampaigns();
-          }
-        });
+        if (typeof afterCreateRefresh === 'function') {
+          afterCreateRefresh();
+        } else {
+          loadCampaigns();
+        }
       });
     }, true);
   }
@@ -1688,7 +2245,15 @@
     const usersForm = document.querySelector('[data-add-user-form]');
     const userRows = document.querySelector('[data-user-rows]');
     const pipelineForm = document.querySelector('[data-pipeline-form]');
+    const pipelineModal = document.querySelector('[data-pipeline-modal]');
     const pipelineSelect = root.querySelector('[data-pipeline-select]');
+    const pipelineNameInput = document.querySelector('[data-pipeline-name-input]');
+    const pipelineModalTitle = document.querySelector('[data-pipeline-modal-title]');
+    const pipelineSubmit = document.querySelector('[data-pipeline-submit]');
+    const pipelineColorInput = document.querySelector('[data-pipeline-color-input]');
+    const pipelineColorPreview = document.querySelector('[data-pipeline-color-preview]');
+    const pipelineColorToggle = document.querySelector('[data-pipeline-color-toggle]');
+    const pipelineColorMenu = document.querySelector('[data-pipeline-color-menu]');
     const stageFlow = root.querySelector('[data-pipeline-stage-flow]');
     const stageEditorForm = root.querySelector('[data-stage-editor-form]');
     const stageNameInput = root.querySelector('[data-stage-name-input]');
@@ -1897,6 +2462,44 @@
       closeBackdrop('[data-stage-modal]');
     }
 
+    function setPipelineColor(color) {
+      const nextColor = /^#[0-9a-f]{6}$/i.test(color || '') ? color : '#763abb';
+      if (pipelineColorInput) pipelineColorInput.value = nextColor;
+      if (pipelineColorPreview) pipelineColorPreview.style.backgroundColor = nextColor;
+      pipelineColorMenu?.querySelectorAll('[data-pipeline-color-option]').forEach(function (option) {
+        option.classList.toggle('active', option.dataset.pipelineColorOption?.toLowerCase() === nextColor.toLowerCase());
+      });
+    }
+
+    function closePipelineColorMenu() {
+      pipelineColorMenu?.classList.remove('open');
+      pipelineColorToggle?.setAttribute('aria-expanded', 'false');
+    }
+
+    function openPipelineModal(mode) {
+      const isEdit = mode === 'edit';
+      const pipeline = selectedPipeline();
+      if (isEdit && !pipeline) {
+        toast('Select a saved pipeline first.', 'error');
+        return;
+      }
+      if (pipelineForm) pipelineForm.dataset.pipelineFormMode = isEdit ? 'edit' : 'create';
+      if (pipelineModalTitle) pipelineModalTitle.textContent = isEdit ? 'Edit Pipeline' : 'Add Pipeline';
+      if (pipelineSubmit) pipelineSubmit.textContent = isEdit ? 'Update' : 'Create';
+      if (pipelineNameInput) pipelineNameInput.value = isEdit ? (pipeline?.name || '') : '';
+      setPipelineColor(isEdit ? pipeline?.color : '#763abb');
+      closePipelineColorMenu();
+      pipelineModal?.classList.add('open');
+      pipelineModal?.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      pipelineNameInput?.focus();
+    }
+
+    function closePipelineModal() {
+      closePipelineColorMenu();
+      closeBackdrop('[data-pipeline-modal]');
+    }
+
     function openTagModal(tag) {
       settingsState.selectedTag = tag || null;
       if (!settingsState.selectedTag) return;
@@ -1921,11 +2524,13 @@
         toast('Select a saved stage before adding tags.', 'error');
         return Promise.reject(new Error('No stage selected'));
       }
-      return crm('stages/' + stage.id + '/tags', { method: 'POST', body: {
-        name: name,
-        sort_order: (stage.tags || []).length + 1,
-        is_active: true
-      } }).then(function () {
+      return crm('stages/' + stage.id + '/tags', {
+        method: 'POST', body: {
+          name: name,
+          sort_order: (stage.tags || []).length + 1,
+          is_active: true
+        }
+      }).then(function () {
         input.value = '';
       });
     }
@@ -1998,10 +2603,10 @@
       }).join('');
       const closedMarkup = wonStage || lostStage
         ? '<div class="closed-stage-row">'
-          + (wonStage ? '<button type="button" class="stage-node won" data-live-stage="' + wonStage.id + '">' + escapeHtml(wonStage.name) + '</button>' : '<span></span>')
-          + '<span class="branch-link" aria-hidden="true"></span>'
-          + (lostStage ? '<button type="button" class="stage-node lost" data-live-stage="' + lostStage.id + '">' + escapeHtml(lostStage.name) + '</button>' : '<span></span>')
-          + '</div>'
+        + (wonStage ? '<button type="button" class="stage-node won" data-live-stage="' + wonStage.id + '">' + escapeHtml(wonStage.name) + '</button>' : '<span></span>')
+        + '<span class="branch-link" aria-hidden="true"></span>'
+        + (lostStage ? '<button type="button" class="stage-node lost" data-live-stage="' + lostStage.id + '">' + escapeHtml(lostStage.name) + '</button>' : '<span></span>')
+        + '</div>'
         : '';
       stageFlow.innerHTML = openMarkup + closedMarkup;
       const nextStage = selectedStageIn(pipeline, stageId) || stages[0];
@@ -2155,6 +2760,43 @@
       renderStages(settingsState.pipelines.find(function (pipeline) { return String(pipeline.id) === pipelineSelect.value; }));
     });
 
+    root.querySelectorAll('[data-pipeline-modal-open]').forEach(function (button) {
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        openPipelineModal(button.dataset.pipelineModalOpen || 'create');
+      }, true);
+    });
+
+    pipelineModal?.addEventListener('click', function (event) {
+      if (event.target === pipelineModal || event.target.closest('[data-pipeline-modal-close]')) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closePipelineModal();
+      }
+    }, true);
+
+    pipelineColorToggle?.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const open = !pipelineColorMenu?.classList.contains('open');
+      pipelineColorMenu?.classList.toggle('open', open);
+      pipelineColorToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }, true);
+
+    pipelineColorMenu?.addEventListener('click', function (event) {
+      const option = event.target.closest('[data-pipeline-color-option]');
+      if (!option) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setPipelineColor(option.dataset.pipelineColorOption);
+      closePipelineColorMenu();
+    }, true);
+
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest('[data-pipeline-color-field]')) closePipelineColorMenu();
+    });
+
     stageCreate?.addEventListener('click', function (event) {
       event.stopImmediatePropagation();
       openStageModal();
@@ -2182,13 +2824,15 @@
       const pipeline = selectedPipeline();
       const name = stageCreateName?.value.trim();
       if (!pipeline || !name) return;
-      crm('pipelines/' + pipeline.id + '/stages', { method: 'POST', body: {
-        name: name,
-        category: 'in_progress',
-        color: '#0f766e',
-        sort_order: Number(settingsState.stageInsertSortOrder || ((pipeline.stages || []).length + 1)),
-        is_active: true
-      } }).then(function (payload) {
+      crm('pipelines/' + pipeline.id + '/stages', {
+        method: 'POST', body: {
+          name: name,
+          category: 'in_progress',
+          color: '#0f766e',
+          sort_order: Number(settingsState.stageInsertSortOrder || ((pipeline.stages || []).length + 1)),
+          is_active: true
+        }
+      }).then(function (payload) {
         const stage = unwrap(payload);
         closeStageModal();
         reloadPipelines(pipeline.id, stage?.id);
@@ -2201,13 +2845,18 @@
       event.stopImmediatePropagation();
       if (!pipelineForm.reportValidity()) return;
       const name = pipelineForm.querySelector('[data-pipeline-name-input]')?.value.trim();
-      const edit = pipelineForm.querySelector('[data-pipeline-modal-title]')?.textContent.includes('Edit');
+      const edit = pipelineForm.dataset.pipelineFormMode === 'edit';
       const selected = pipelineSelect?.value;
+      const color = pipelineColorInput?.value || '#763abb';
+      if (edit && !selected) {
+        toast('Select a saved pipeline first.', 'error');
+        return;
+      }
       const path = edit && selected ? 'pipelines/' + selected : 'pipelines';
-      crm(path, { method: edit ? 'PUT' : 'POST', body: { name: name, color: '#763abb', is_active: true } }).then(function (payload) {
+      crm(path, { method: edit ? 'PUT' : 'POST', body: { name: name, color: color, is_active: true } }).then(function (payload) {
         const pipeline = unwrap(payload);
         reloadPipelines(pipeline?.id || selected);
-        closeBackdrop('[data-pipeline-modal]');
+        closePipelineModal();
         toast(edit ? 'Pipeline updated.' : 'Pipeline created.');
       });
     }, true);
@@ -2242,19 +2891,23 @@
         return Number(checkbox.value);
       });
       savePendingTag().then(function () {
-        return crm('stages/' + stage.id, { method: 'PUT', body: {
-          name: stageNameInput.value.trim(),
-          code: stage.code,
-          category: stage.category,
-          color: stage.color,
-          is_closed: stage.is_closed,
-          is_active: stage.is_active,
-          sort_order: stage.sort_order
-        } });
+        return crm('stages/' + stage.id, {
+          method: 'PUT', body: {
+            name: stageNameInput.value.trim(),
+            code: stage.code,
+            category: stage.category,
+            color: stage.color,
+            is_closed: stage.is_closed,
+            is_active: stage.is_active,
+            sort_order: stage.sort_order
+          }
+        });
       }).then(function () {
-        return crm('stages/' + stage.id + '/transitions', { method: 'PUT', body: {
-          transition_ids: transitionIds
-        } });
+        return crm('stages/' + stage.id + '/transitions', {
+          method: 'PUT', body: {
+            transition_ids: transitionIds
+          }
+        });
       }).then(function () {
         reloadPipelines(pipeline?.id, stage.id);
         toast('Stage updated.');
@@ -2270,7 +2923,7 @@
       const pipeline = selectedPipeline();
       if (!stage) return;
       if (!confirm('Are you sure you want to delete this stage?')) return;
-      
+
       crm('stages/' + stage.id, { method: 'DELETE' }).then(function () {
         reloadPipelines(pipeline?.id);
         toast('Stage deleted.');
@@ -2320,12 +2973,14 @@
       const stage = settingsState.selectedStage;
       const pipeline = selectedPipeline();
       if (!tag || !tagForm.reportValidity() || !tagNameInput?.value.trim()) return;
-      crm('stage-tags/' + tag.id, { method: 'PUT', body: {
-        name: tagNameInput.value.trim(),
-        color: tag.color,
-        sort_order: tag.sort_order,
-        is_active: tag.is_active
-      } }).then(function () {
+      crm('stage-tags/' + tag.id, {
+        method: 'PUT', body: {
+          name: tagNameInput.value.trim(),
+          color: tag.color,
+          sort_order: tag.sort_order,
+          is_active: tag.is_active
+        }
+      }).then(function () {
         closeTagModal();
         reloadPipelines(pipeline?.id, stage?.id);
         toast('Stage tag updated.');
@@ -2348,6 +3003,7 @@
 
     document.addEventListener('keydown', function (event) {
       if (event.key !== 'Escape') return;
+      closePipelineModal();
       closeStageModal();
       closeTagModal();
     }, true);
@@ -2367,15 +3023,17 @@
       event.stopImmediatePropagation();
       const row = settingsState.retryReason;
       if (!row || !retryLogicForm.reportValidity()) return;
-      crm('settings/retry-reasons/' + row.dataset.retryId + '/rule', { method: 'PUT', body: {
-        logic_type: (retryLogicForm.querySelector('input[name="retry_logic_type"]:checked')?.value || 'fixed').toLowerCase(),
-        max_retries: Number(retryLogicForm.querySelector('[data-retry-count]')?.value || 5),
-        interval_value: Number(retryLogicForm.querySelector('[data-retry-interval]')?.value || 1),
-        interval_unit: (retryLogicForm.querySelector('[data-retry-unit]')?.value || 'hours').toLowerCase(),
-        mark_lost_after_exhausted: true,
-        is_active: true,
-        apply_to_all: Boolean(retryLogicForm.querySelector('[data-retry-apply-all]')?.checked)
-      } }).then(function () {
+      crm('settings/retry-reasons/' + row.dataset.retryId + '/rule', {
+        method: 'PUT', body: {
+          logic_type: (retryLogicForm.querySelector('input[name="retry_logic_type"]:checked')?.value || 'fixed').toLowerCase(),
+          max_retries: Number(retryLogicForm.querySelector('[data-retry-count]')?.value || 5),
+          interval_value: Number(retryLogicForm.querySelector('[data-retry-interval]')?.value || 1),
+          interval_unit: (retryLogicForm.querySelector('[data-retry-unit]')?.value || 'hours').toLowerCase(),
+          mark_lost_after_exhausted: true,
+          is_active: true,
+          apply_to_all: Boolean(retryLogicForm.querySelector('[data-retry-apply-all]')?.checked)
+        }
+      }).then(function () {
         closeBackdrop('[data-retry-logic-modal]');
         toast('Retry logic saved.');
       });
@@ -2478,4 +3136,3 @@
     toast: toast
   };
 })();
-

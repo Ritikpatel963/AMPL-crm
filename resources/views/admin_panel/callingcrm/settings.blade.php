@@ -331,7 +331,7 @@
                         </div>
                     </article>
 
-                    <article class="pipeline-card">
+                    <article class="pipeline-card edit-stage-card">
                         <div class="pipeline-card-head">
                             <strong>Edit Stage</strong>
                             <div>
@@ -351,11 +351,11 @@
                                 </div>
                             </div>
                             <section class="stage-settings" data-stage-settings>
-                                <button type="button" class="additional-setting" data-stage-settings-toggle aria-expanded="true">
+                                <button type="button" class="additional-setting" data-stage-settings-toggle aria-expanded="false">
                                     <span>Additional Setting</span>
-                                    <i class="fa-solid fa-chevron-up"></i>
+                                    <i class="fa-solid fa-chevron-down"></i>
                                 </button>
-                                <div class="stage-settings-body" data-stage-settings-body>
+                                <div class="stage-settings-body" data-stage-settings-body hidden>
                                     <strong>Transitions:</strong>
                                     <div class="stage-transition-list" data-stage-transition-list></div>
                                 </div>
@@ -718,8 +718,8 @@
             </section>
         </div>
 
-        <div class="crm-backdrop" data-pipeline-modal aria-hidden="true">
-            <form class="pipeline-modal" data-pipeline-form>
+        <div class="crm-backdrop pipeline-dialog-backdrop pipeline-edit-backdrop" data-pipeline-modal aria-hidden="true">
+            <form class="pipeline-modal pipeline-dialog pipeline-dialog-md pipeline-edit-modal" data-pipeline-form data-pipeline-form-mode="create">
                 <div class="pipeline-modal-head">
                     <div class="pipeline-modal-title">
                         <span data-pipeline-modal-title>Add Pipeline</span>
@@ -731,18 +731,31 @@
                     <span>Pipeline Name *</span>
                     <input class="pipeline-name-input" type="text" value="New Pipeline" data-pipeline-name-input required>
                 </label>
-                <div class="color-select-row">
+                <div class="color-select-row" data-pipeline-color-field>
                     <strong>Select Color:</strong>
-                    <span class="color-select"><span class="color-dot"></span><i class="fa-solid fa-chevron-down"></i></span>
+                    <button type="button" class="color-select" data-pipeline-color-toggle aria-expanded="false" aria-label="Select pipeline color">
+                        <span class="color-dot" data-pipeline-color-preview></span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <input type="hidden" value="#763abb" data-pipeline-color-input>
+                    <div class="pipeline-color-menu" data-pipeline-color-menu>
+                        <button type="button" class="pipeline-color-option active" data-pipeline-color-option="#763abb" style="--pipeline-option-color:#763abb;" aria-label="Purple"></button>
+                        <button type="button" class="pipeline-color-option" data-pipeline-color-option="#2563eb" style="--pipeline-option-color:#2563eb;" aria-label="Blue"></button>
+                        <button type="button" class="pipeline-color-option" data-pipeline-color-option="#0f766e" style="--pipeline-option-color:#0f766e;" aria-label="Teal"></button>
+                        <button type="button" class="pipeline-color-option" data-pipeline-color-option="#16a34a" style="--pipeline-option-color:#16a34a;" aria-label="Green"></button>
+                        <button type="button" class="pipeline-color-option" data-pipeline-color-option="#f59e0b" style="--pipeline-option-color:#f59e0b;" aria-label="Amber"></button>
+                        <button type="button" class="pipeline-color-option" data-pipeline-color-option="#dc2626" style="--pipeline-option-color:#dc2626;" aria-label="Red"></button>
+                    </div>
                 </div>
                 <div class="pipeline-modal-actions">
+                    <button type="button" class="modal-btn" data-pipeline-modal-close>Cancel</button>
                     <button type="submit" class="modal-btn primary" data-pipeline-submit>Create</button>
                 </div>
             </form>
         </div>
 
-        <div class="crm-backdrop" data-stage-modal aria-hidden="true">
-            <form class="pipeline-modal" data-stage-form>
+        <div class="crm-backdrop pipeline-dialog-backdrop stage-create-backdrop" data-stage-modal aria-hidden="true">
+            <form class="pipeline-modal pipeline-dialog pipeline-dialog-sm stage-create-modal" data-stage-form>
                 <div class="pipeline-modal-head">
                     <div class="pipeline-modal-title">Add Stage</div>
                     <button type="button" class="modal-close" data-stage-modal-close aria-label="Close">&times;</button>
@@ -758,8 +771,8 @@
             </form>
         </div>
 
-        <div class="crm-backdrop" data-tag-modal aria-hidden="true">
-            <form class="pipeline-modal" data-tag-form>
+        <div class="crm-backdrop pipeline-dialog-backdrop tag-edit-backdrop" data-tag-modal aria-hidden="true">
+            <form class="pipeline-modal pipeline-dialog pipeline-dialog-sm tag-edit-modal" data-tag-form>
                 <div class="pipeline-modal-head">
                     <div class="pipeline-modal-title">Edit Tag</div>
                     <button type="button" class="modal-close" data-tag-modal-close aria-label="Close">&times;</button>
@@ -770,6 +783,8 @@
                 </label>
                 <div class="pipeline-modal-actions">
                     <button type="button" class="modal-btn danger" data-tag-delete>Delete</button>
+                    <span class="modal-action-spacer"></span>
+                    <button type="button" class="modal-btn" data-tag-modal-close>Cancel</button>
                     <button type="submit" class="modal-btn primary">Update</button>
                 </div>
             </form>
