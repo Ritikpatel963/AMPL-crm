@@ -15,12 +15,15 @@ class Product extends Model
         'name', 'sku', 'description', 'category_id', 'subcategory_id', 'brand',
         'regular_price', 'sale_price', 'tax', 'stock_quantity', 'stock_status',
         'low_stock_alert', 'video_url', 'images', 'status', 'featured', 'is_offer',
+        'attributes_json', 'variations_json',
     ];
 
     protected $casts = [
         'status' => 'boolean',
         'featured' => 'boolean',
         'is_offer' => 'boolean',
+        'attributes_json' => 'array',
+        'variations_json' => 'array',
     ];
 
     public function category()

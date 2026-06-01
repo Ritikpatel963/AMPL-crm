@@ -40,7 +40,7 @@
                     $isUserMenu = request()->routeIs('admin_panel.admin.users.*');
                     $isVendorMenu = request()->routeIs('admin_panel.admin.vendors.*') || request()->routeIs('admin_panel.admin.vendor_categories.*');
                     $isKycMenu = request()->routeIs('admin_panel.admin.kyc.*');
-                    $isProductMenu = request()->routeIs('admin_panel.admin.products.*') || request()->routeIs('admin_panel.admin.categories.*');
+                    $isProductMenu = request()->routeIs('admin_panel.admin.products.*') || request()->routeIs('admin_panel.admin.categories.*') || request()->routeIs('admin_panel.admin.product_attributes.*');
                     $isShippingMenu = request()->routeIs('admin_panel.admin.shipping.*');
                     $isCustomerMenu = request()->routeIs('admin_panel.admin.customers.*');
                     $isPaymentMenu = request()->routeIs('admin_panel.admin.payments.*');
@@ -103,6 +103,7 @@
                             </li>
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.products.create') }}">Add
                                     Products</a></li>
+                            <li><a class="ms-link" href="{{ route('admin_panel.admin.product_attributes.index') }}">Attributes</a></li>
                             <li><a class="ms-link" href="{{ route('admin_panel.admin.categories.index') }}">Manage
                                     Category</a>
                             </li>

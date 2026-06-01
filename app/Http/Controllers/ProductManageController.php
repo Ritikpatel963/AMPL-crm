@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\ProductAttribute;
 use File;
 
 class ProductManageController extends Controller
@@ -19,7 +20,8 @@ class ProductManageController extends Controller
     {
         $categories = Category::whereNull('parent_id')->get();
         $subcategories = Category::whereNotNull('parent_id')->get();
-        return view('admin_panel.product.add_product', compact('categories', 'subcategories'));
+        $productAttributes = ProductAttribute::where('status', true)->orderBy('name')->get();
+        return view('admin_panel.product.add_product', compact('categories', 'subcategories', 'productAttributes'));
     }
 
     public function store(Request $request)
@@ -28,7 +30,9 @@ class ProductManageController extends Controller
             'name' => 'required',
             'sku' => 'nullable|unique:products',
             'category_id' => 'required',
-            'images.*' => 'image|mimes:jpg,jpeg,png|max:2048'
+            'images.*' => 'image|mimes:jpg,jpeg,png|max:2048',
+            'attributes_json' => 'nullable|string',
+            'variations_json' => 'nullable|string',
         ]);
 
         $imagePaths = [];
@@ -42,7 +46,7 @@ class ProductManageController extends Controller
 
         Product::create([
             'name' => $request->name,
-            'sku' => $request->sku,
+            'sku' => $request->filled('sku') ? $request->sku : null,
             'description' => $request->description,
             'category_id' => $request->category_id,
             'subcategory_id' => $request->subcategory_id,
@@ -58,6 +62,8 @@ class ProductManageController extends Controller
             'featured' => $request->has('featured') ? 1 : 0,
             'is_offer' => $request->has('is_offer') ? 1 : 0,
             'images' => json_encode($imagePaths),
+            'attributes_json' => $this->decodeProductJson($request->attributes_json),
+            'variations_json' => $this->decodeProductJson($request->variations_json),
         ]);
 
         return redirect()->route('admin_panel.admin.products.index')->with('success', 'Product added successfully!');
@@ -68,8 +74,9 @@ class ProductManageController extends Controller
         $product = Product::findOrFail($id);
         $categories = Category::whereNull('parent_id')->get();
         $subcategories = Category::whereNotNull('parent_id')->get();
+        $productAttributes = ProductAttribute::where('status', true)->orderBy('name')->get();
 
-        return view('admin_panel.product.edit_product', compact('product', 'categories', 'subcategories'));
+        return view('admin_panel.product.edit_product', compact('product', 'categories', 'subcategories', 'productAttributes'));
     }
 
     // ✅ UPDATE PRODUCT
@@ -81,7 +88,9 @@ class ProductManageController extends Controller
             'name' => 'required',
             'sku' => 'nullable|unique:products,sku,' . $product->id,
             'category_id' => 'required',
-            'images.*' => 'image|mimes:jpg,jpeg,png|max:2048'
+            'images.*' => 'image|mimes:jpg,jpeg,png|max:2048',
+            'attributes_json' => 'nullable|string',
+            'variations_json' => 'nullable|string',
         ]);
 
         $imagePaths = json_decode($product->images, true) ?? [];
@@ -106,7 +115,7 @@ class ProductManageController extends Controller
 
         $product->update([
             'name' => $request->name,
-            'sku' => $request->sku,
+            'sku' => $request->filled('sku') ? $request->sku : null,
             'description' => $request->description,
             'category_id' => $request->category_id,
             'subcategory_id' => $request->subcategory_id,
@@ -122,6 +131,8 @@ class ProductManageController extends Controller
             'featured' => $request->has('featured') ? 1 : 0,
             'is_offer' => $request->has('is_offer') ? 1 : 0,
             'images' => json_encode($imagePaths),
+            'attributes_json' => $this->decodeProductJson($request->attributes_json),
+            'variations_json' => $this->decodeProductJson($request->variations_json),
         ]);
 
         return redirect()->route('admin_panel.admin.products.index')->with('success', 'Product updated successfully!');
@@ -144,5 +155,15 @@ class ProductManageController extends Controller
         $product->delete();
 
         return redirect()->route('admin_panel.admin.products.index')->with('success', 'Product deleted successfully!');
+    }
+
+    private function decodeProductJson(?string $json): array
+    {
+        if (!$json) {
+            return [];
+        }
+
+        $decoded = json_decode($json, true);
+        return is_array($decoded) ? $decoded : [];
     }
 }

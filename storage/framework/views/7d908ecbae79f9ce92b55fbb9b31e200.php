@@ -1,7 +1,7 @@
-@extends('admin_panel.layout.app')
-@section('title', 'Add New Product')
 
-@section('main-content')
+<?php $__env->startSection('title', 'Add New Product'); ?>
+
+<?php $__env->startSection('main-content'); ?>
 <div class="card shadow-sm border-0 rounded-3 p-4">
 
   <!-- Page Header -->
@@ -10,14 +10,14 @@
       <h5 class="fw-bold mb-0">Add New Product</h5>
       <small class="text-muted">Fill in the details to add a new product</small>
     </div>
-    <a href="{{ route('admin_panel.admin.products.index') }}" class="btn btn-secondary btn-sm rounded-pill">
+    <a href="<?php echo e(route('admin_panel.admin.products.index')); ?>" class="btn btn-secondary btn-sm rounded-pill">
       <i class="bi bi-arrow-left me-2"></i>Back to Products
     </a>
   </div>
 
   <!-- Product Form -->
-  <form action="{{ route('admin_panel.admin.products.store') }}" method="POST" enctype="multipart/form-data">
-    @csrf
+  <form action="<?php echo e(route('admin_panel.admin.products.store')); ?>" method="POST" enctype="multipart/form-data">
+    <?php echo csrf_field(); ?>
 
     <!-- Basic Info -->
     <h6 class="fw-semibold mb-3 text-primary">Product Basic Info</h6>
@@ -38,18 +38,18 @@
         <label class="form-label">Category</label>
         <select class="form-select" name="category_id" required>
           <option selected disabled>Select Category</option>
-          @foreach($categories as $cat)
-            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-          @endforeach
+          <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <option value="<?php echo e($cat->id); ?>"><?php echo e($cat->name); ?></option>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </select>
       </div>
       <div class="col-md-4">
         <label class="form-label">Subcategory</label>
         <select class="form-select" name="subcategory_id">
           <option selected disabled>Select Subcategory</option>
-          @foreach($subcategories as $sub)
-            <option value="{{ $sub->id }}">{{ $sub->name }}</option>
-          @endforeach
+          <?php $__currentLoopData = $subcategories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sub): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <option value="<?php echo e($sub->id); ?>"><?php echo e($sub->name); ?></option>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </select>
       </div>
       <div class="col-md-4">
@@ -98,7 +98,7 @@
 
     <!-- Attributes / Variations -->
     <h6 class="fw-semibold mb-3 text-primary">Attributes & Variations</h6>
-    @include('admin_panel.product.partials.product_variations_builder')
+    <?php echo $__env->make('admin_panel.product.partials.product_variations_builder', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
 
     <!-- Images -->
     <h6 class="fw-semibold mb-3 text-primary">Images / Media</h6>
@@ -143,22 +143,24 @@
     </div>
   </form>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@push('styles')
+<?php $__env->startPush('styles'); ?>
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css" rel="stylesheet">
-@endpush
+<?php $__env->stopPush(); ?>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
 <script>
   $('.summernote').summernote({
     height: 220,
     placeholder: 'Write product description...'
   });
-  window.availableProductAttributes = @json($productAttributes);
+  window.availableProductAttributes = <?php echo json_encode($productAttributes, 15, 512) ?>;
   window.initialProductAttributes = [];
   window.initialProductVariations = [];
 </script>
-@include('admin_panel.product.partials.product_variations_script')
-@endpush
+<?php echo $__env->make('admin_panel.product.partials.product_variations_script', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+<?php $__env->stopPush(); ?>
+
+<?php echo $__env->make('admin_panel.layout.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH E:\website-project\Amplchat\CMS\resources\views/admin_panel/product/add_product.blade.php ENDPATH**/ ?>

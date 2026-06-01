@@ -78,6 +78,11 @@
             </div>
 
             <div class="col-md-12 mb-3">
+                <h6 class="fw-semibold mb-3 text-primary">Attributes & Variations</h6>
+                @include('admin_panel.product.partials.product_variations_builder')
+            </div>
+
+            <div class="col-md-12 mb-3">
                 <label>Description</label>
                 <textarea name="description" class="form-control summernote" rows="3">{{ $product->description }}</textarea>
             </div>
@@ -134,5 +139,9 @@
     height: 220,
     placeholder: 'Write product description...'
   });
+  window.initialProductAttributes = @json($product->attributes_json ?? []);
+  window.initialProductVariations = @json($product->variations_json ?? []);
+  window.availableProductAttributes = @json($productAttributes);
 </script>
+@include('admin_panel.product.partials.product_variations_script')
 @endpush

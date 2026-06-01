@@ -57,7 +57,10 @@ class ProductController extends Controller
         $images = json_decode($product->images, true);
         $product->image = $images[0] ?? null;
         $product->image_list = $images ?: [];
+        $product->attributes = $product->attributes_json ?? [];
+        $product->variations = $product->variations_json ?? [];
         unset($product->images);
+        unset($product->attributes_json, $product->variations_json);
 
         return response()->json([
             'status' => true,

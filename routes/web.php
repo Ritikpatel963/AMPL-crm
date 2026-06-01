@@ -9,6 +9,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductManageController;
+use App\Http\Controllers\ProductAttributeController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ShippingMethodController;
 use App\Http\Controllers\StockController;
@@ -95,6 +96,10 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
     Route::get('/products/edit/{id}', [ProductManageController::class, 'edit'])->name('products.edit');
     Route::post('/products/update/{id}', [ProductManageController::class, 'update'])->name('products.update');
     Route::delete('/products/delete/{id}', [ProductManageController::class, 'destroy'])->name('products.destroy');
+    Route::get('/product-attributes', [ProductAttributeController::class, 'index'])->name('product_attributes.index');
+    Route::post('/product-attributes', [ProductAttributeController::class, 'store'])->name('product_attributes.store');
+    Route::put('/product-attributes/{productAttribute}', [ProductAttributeController::class, 'update'])->name('product_attributes.update');
+    Route::delete('/product-attributes/{productAttribute}', [ProductAttributeController::class, 'destroy'])->name('product_attributes.destroy');
     //users(role)
     Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
     Route::post('/users/store', [AdminUserController::class, 'store'])->name('users.store');
