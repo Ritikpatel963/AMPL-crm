@@ -21,7 +21,7 @@ class TeamsController extends Controller
         ])
             ->when($request->boolean('active_only'), fn ($query) => $query->active())
             ->orderBy('name')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $teams]);
     }

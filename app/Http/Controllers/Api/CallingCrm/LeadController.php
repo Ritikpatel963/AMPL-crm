@@ -64,7 +64,7 @@ class LeadController extends Controller
             ->when($request->filled('assigned_user_id'), fn ($query) => $query->where('assigned_user_id', $request->assigned_user_id))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
             ->latest()
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         $leads->getCollection()->transform(fn (Lead $lead) => $this->leadListPayload($lead));
 
@@ -254,7 +254,7 @@ class LeadController extends Controller
             'data' => $lead->timelineEvents()
                 ->with('user:id,name')
                 ->latest('occurred_at')
-                ->paginate(request()->integer('per_page', 50)),
+                ->paginate(min(max(request()->integer('per_page', 50), 1), 100)),
         ]);
     }
 
@@ -267,7 +267,7 @@ class LeadController extends Controller
             'data' => $lead->dispositions()
                 ->with(['disposition:id,name', 'user:id,name', 'toStage:id,name', 'tag:id,name'])
                 ->latest('disposed_at')
-                ->paginate(request()->integer('per_page', 50)),
+                ->paginate(min(max(request()->integer('per_page', 50), 1), 100)),
         ]);
     }
 
@@ -442,8 +442,9 @@ class LeadController extends Controller
         $campaign = Campaign::findOrFail($data['campaign_id']);
 
         $leads = Lead::whereIn('id', $data['lead_ids'])->get();
+        $now = now();
+        $inserts = [];
 
-        $copied = 0;
         foreach ($leads as $lead) {
             $newLead = $lead->replicate();
             $newLead->campaign_id = $campaign->id;
@@ -451,12 +452,24 @@ class LeadController extends Controller
             $newLead->stage_id = null;
             $newLead->tag_id = null;
             $newLead->assigned_user_id = null;
-            $newLead->save();
-            $this->assignmentService->assignLead($newLead);
-            $copied++;
+            
+            $attributes = $newLead->getAttributes();
+            $attributes['created_at'] = $now;
+            $attributes['updated_at'] = $now;
+            
+            $inserts[] = $attributes;
         }
 
-        $this->assignmentService->refreshCampaignAgentCounts($campaign);
+        DB::transaction(function () use ($inserts, $campaign) {
+            foreach (array_chunk($inserts, 500) as $chunk) {
+                DB::table('leads')->insert($chunk);
+            }
+            
+            $this->assignmentService->distributeUnassigned($campaign, count($inserts));
+            $this->assignmentService->refreshCampaignAgentCounts($campaign);
+        });
+
+        $copied = count($inserts);
 
         return response()->json([
             'status' => true,

@@ -20,7 +20,7 @@ class DispositionController extends Controller
             ->when($request->filled('pipeline_id'), fn ($query) => $query->where('pipeline_id', $request->pipeline_id))
             ->when($request->boolean('active_only'), fn ($query) => $query->active())
             ->orderBy('sort_order')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $dispositions]);
     }

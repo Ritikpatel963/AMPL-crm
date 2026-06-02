@@ -33,7 +33,7 @@ class SettingsController extends Controller
     {
         return response()->json([
             'status' => true,
-            'data' => CrmBusinessProfile::first(),
+            'data' => CrmCacheService::bootstrap()['business_profile'] ?? null,
         ]);
     }
 
@@ -82,7 +82,7 @@ class SettingsController extends Controller
                 });
             })
             ->orderBy('name')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $users]);
     }
@@ -223,7 +223,7 @@ class SettingsController extends Controller
             ->when($request->boolean('active_only'), fn ($query) => $query->active())
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json([
             'status' => true,
@@ -436,7 +436,7 @@ class SettingsController extends Controller
             return;
         }
 
-        $profile = CrmBusinessProfile::first();
+        $profile = CrmCacheService::bootstrap()['business_profile'] ?? null;
         $rules = [
             ['name' => 'Manually Scheduled Leads', 'code' => 'manual_scheduled', 'is_locked' => true],
             ['name' => 'Uncontacted Assigned Leads', 'code' => 'assigned_uncontacted'],

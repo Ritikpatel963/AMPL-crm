@@ -108,7 +108,7 @@ class ReportController extends Controller
                 'assignedLeads as lost_leads' => fn ($query) => $query->where('status', 'lost'),
                 'followUps as follow_ups_due_today' => fn ($query) => $query->whereDate('scheduled_at', today()),
             ])
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $rows]);
     }
@@ -126,7 +126,7 @@ class ReportController extends Controller
             ->when($request->filled('user_id'), fn ($query) => $query->where('user_id', $request->user_id))
             ->when($request->filled('campaign_id'), fn ($query) => $query->where('campaign_id', $request->campaign_id))
             ->orderBy('scheduled_at')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $followUps]);
     }
@@ -143,7 +143,7 @@ class ReportController extends Controller
                 'callLogs as connected_calls' => fn ($query) => $query->connected(),
             ])
             ->when($request->filled('pipeline_id'), fn ($query) => $query->where('pipeline_id', $request->pipeline_id))
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $campaigns]);
     }
@@ -245,7 +245,7 @@ class ReportController extends Controller
             ->when($request->filled('from'), fn ($q) => $q->whereDate('disposed_at', '>=', $request->from))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('disposed_at', '<=', $request->to))
             ->latest('disposed_at')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $rows]);
     }
@@ -257,7 +257,7 @@ class ReportController extends Controller
             ->when($request->filled('from'), fn ($q) => $q->whereDate('logged_in_at', '>=', $request->from))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('logged_in_at', '<=', $request->to))
             ->latest('logged_in_at')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $rows]);
     }

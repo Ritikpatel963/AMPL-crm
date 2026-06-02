@@ -41070,3 +41070,9 @@ Did you mean one of these?
 [2026-06-02 13:45:50] testing.INFO: [LOGIN-SEND-OTP] User lookup result {"phone":"919876543210","user_found":false,"user_id":null,"role":null,"approval_status":null} 
 [2026-06-02 13:45:50] testing.INFO: [LOGIN-SEND-OTP] 🆕 Auto-registering new customer {"phone":"919876543210"} 
 [2026-06-02 13:45:50] testing.WARNING: [OTP] ⛔ Rate limit hit {"phone":"919876543210","retry_in":3600} 
+[2026-06-02 16:28:16] testing.INFO: [LOGIN-SEND-OTP] ═══════════ New Request ═══════════  
+[2026-06-02 16:28:16] testing.INFO: [LOGIN-SEND-OTP] Raw input {"raw_phone":"919876543210"} 
+[2026-06-02 16:28:16] testing.INFO: [LOGIN-SEND-OTP] Phone normalized {"raw":"919876543210","normalized":"919876543210"} 
+[2026-06-02 16:28:16] testing.INFO: [LOGIN-SEND-OTP] User lookup result {"phone":"919876543210","user_found":false,"user_id":null,"role":null,"approval_status":null} 
+[2026-06-02 16:28:16] testing.INFO: [LOGIN-SEND-OTP] 🆕 Auto-registering new customer {"phone":"919876543210"} 
+[2026-06-02 16:28:16] testing.WARNING: [OTP] ⛔ Rate limit hit {"phone":"919876543210","retry_in":3600} 

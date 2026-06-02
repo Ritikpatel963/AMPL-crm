@@ -14,7 +14,7 @@ class SavedFiltersController extends Controller
         $filters = SavedFilter::where('user_id', auth()->id())
             ->when($request->filled('module'), fn ($q) => $q->where('module', $request->module))
             ->orderBy('name')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $filters]);
     }

@@ -33,7 +33,7 @@ class CallController extends Controller
             ->when($request->filled('from'), fn ($query) => $query->whereDate('started_at', '>=', $request->from))
             ->when($request->filled('to'), fn ($query) => $query->whereDate('started_at', '<=', $request->to))
             ->latest('started_at')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $calls]);
     }
@@ -248,7 +248,7 @@ class CallController extends Controller
             ->when($request->filled('from'), fn ($q) => $q->whereDate('started_at', '>=', $request->from))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('started_at', '<=', $request->to))
             ->latest('started_at')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $calls]);
     }
@@ -264,7 +264,7 @@ class CallController extends Controller
             ->when($request->filled('from'), fn ($q) => $q->whereDate('started_at', '>=', $request->from))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('started_at', '<=', $request->to))
             ->latest('started_at')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $calls]);
     }

@@ -37,3 +37,15 @@ Schedule::job(new MarkMissedFollowUps)->everyFiveMinutes();
 Schedule::job(new RefreshCrmAnalyticsCache)->hourly();
 Schedule::job(new CloseStaleUserSessions)->hourly();
 Schedule::job(new ExpireCrmReportExports)->daily();
+
+Schedule::call(function () {
+    $disk = Illuminate\Support\Facades\Storage::disk('local');
+    $files = $disk->files('temp');
+    $now = now()->timestamp;
+    
+    foreach ($files as $file) {
+        if ($now - $disk->lastModified($file) > 3600) {
+            $disk->delete($file);
+        }
+    }
+})->hourly()->name('cleanup-temp-files')->withoutOverlapping();

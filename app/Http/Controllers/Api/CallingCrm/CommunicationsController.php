@@ -19,7 +19,7 @@ class CommunicationsController extends Controller
             ->when($request->filled('from'), fn ($q) => $q->whereDate('sent_at', '>=', $request->from))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('sent_at', '<=', $request->to))
             ->latest('sent_at')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $events]);
     }

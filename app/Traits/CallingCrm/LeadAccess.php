@@ -31,6 +31,12 @@ trait LeadAccess
                 );
         }
 
+        \Illuminate\Support\Facades\Log::warning('Unauthorized CRM lead access attempt.', [
+            'user_id' => $user->id,
+            'role' => $user->role,
+            'lead_id' => $lead->id,
+        ]);
+
         return false;
     }
 }

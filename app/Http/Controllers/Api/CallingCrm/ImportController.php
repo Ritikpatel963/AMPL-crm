@@ -17,7 +17,7 @@ class ImportController extends Controller
             ->when($request->filled('campaign_id'), fn($query) => $query->where('campaign_id', $request->campaign_id))
             ->when($request->filled('status'), fn($query) => $query->where('status', $request->status))
             ->latest()
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $imports]);
     }
@@ -79,7 +79,7 @@ class ImportController extends Controller
             ->when($request->filled('status'), fn($query) => $query->where('status', $request->status))
             ->when($request->filled('search'), fn($query) => $query->where('raw_payload', 'like', '%' . $request->search . '%'))
             ->orderBy('row_number')
-            ->paginate($request->integer('per_page', 50));
+            ->paginate(min(max($request->integer('per_page', 50), 1), 100));
 
         return response()->json(['status' => true, 'data' => $rows]);
     }

@@ -25,7 +25,7 @@ class ProductController extends Controller
             }))
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->orderBy('id', 'DESC')
-            ->paginate($request->integer('per_page', 12));
+            ->paginate(min(max($request->integer('per_page', 12), 1), 100));
 
         $products->getCollection()->transform(function ($product) {
             $images = json_decode($product->images, true);

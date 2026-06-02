@@ -68,7 +68,7 @@ class CampaignController extends Controller
             ->when($request->filled('status'), fn($query) => $query->where('status', $request->status))
             ->when($request->boolean('pinned'), fn($query) => $query->pinned())
             ->latest()
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $campaigns]);
     }
