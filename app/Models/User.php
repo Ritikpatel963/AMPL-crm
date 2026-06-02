@@ -246,10 +246,7 @@ class User extends Authenticatable
         };
     }
 
-    public function getIsOnlineAttribute()
-    {
-        return $this->crmSessions()->where('status', 'online')->exists();
-    }
+
 
     public function getCurrentBreakDurationAttribute()
     {

@@ -14,7 +14,9 @@ use Illuminate\Validation\Rule;
 
 class CampaignController extends Controller
 {
-    public function __construct(private LeadAssignmentService $assignmentService) {}
+    public function __construct(private LeadAssignmentService $assignmentService)
+    {
+    }
 
     public function index(Request $request)
     {
@@ -24,32 +26,35 @@ class CampaignController extends Controller
             ->with([
                 'pipeline:id,name',
                 'manager:id,name',
-                'users:id,name,email',
+                'users' => function ($q) {
+                    $q->select('users.id', 'users.name', 'users.email')
+                        ->withExists(['crmSessions as is_online' => fn($query) => $query->where('status', 'online')]);
+                },
             ])
             ->withCount([
                 'leads',
                 'leads as total_leads_count',
-                'leads as assigned_leads_count' => fn ($query) => $query
+                'leads as assigned_leads_count' => fn($query) => $query
                     ->whereNotNull('assigned_user_id')
-                    ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
-                'leads as unassigned_leads_count' => fn ($query) => $query->whereNull('assigned_user_id'),
-                'leads as uncontacted_leads_count' => fn ($query) => $query
+                    ->when($user?->role === 'agent', fn($q) => $q->where('assigned_user_id', $user->id)),
+                'leads as unassigned_leads_count' => fn($query) => $query->whereNull('assigned_user_id'),
+                'leads as uncontacted_leads_count' => fn($query) => $query
                     ->where('status', 'uncontacted')
-                    ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
-                'leads as in_progress_leads_count' => fn ($query) => $query
+                    ->when($user?->role === 'agent', fn($q) => $q->where('assigned_user_id', $user->id)),
+                'leads as in_progress_leads_count' => fn($query) => $query
                     ->where('status', 'in_progress')
-                    ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
-                'leads as closed_leads_count' => fn ($query) => $query
+                    ->when($user?->role === 'agent', fn($q) => $q->where('assigned_user_id', $user->id)),
+                'leads as closed_leads_count' => fn($query) => $query
                     ->whereIn('status', ['converted', 'lost', 'closed'])
-                    ->when($user?->role === 'agent', fn ($q) => $q->where('assigned_user_id', $user->id)),
-                'callLogs as total_calls_count' => fn ($query) => $query
-                    ->when($user?->role === 'agent', fn ($q) => $q->where('user_id', $user->id)),
-                'callLogs as connected_calls_count' => fn ($query) => $query
+                    ->when($user?->role === 'agent', fn($q) => $q->where('assigned_user_id', $user->id)),
+                'callLogs as total_calls_count' => fn($query) => $query
+                    ->when($user?->role === 'agent', fn($q) => $q->where('user_id', $user->id)),
+                'callLogs as connected_calls_count' => fn($query) => $query
                     ->whereIn('status', ['connected', 'answered'])
-                    ->when($user?->role === 'agent', fn ($q) => $q->where('user_id', $user->id)),
-                'callLogs as disconnected_calls_count' => fn ($query) => $query
+                    ->when($user?->role === 'agent', fn($q) => $q->where('user_id', $user->id)),
+                'callLogs as disconnected_calls_count' => fn($query) => $query
                     ->whereIn('status', ['not_connected', 'busy', 'no_answer', 'failed', 'missed'])
-                    ->when($user?->role === 'agent', fn ($q) => $q->where('user_id', $user->id)),
+                    ->when($user?->role === 'agent', fn($q) => $q->where('user_id', $user->id)),
             ])
             ->when($user?->role === 'agent', function ($query) use ($user) {
                 $query->visibleToUser($user->id)
@@ -58,10 +63,10 @@ class CampaignController extends Controller
                             ->orWhere('hide_paused_from_agents', false);
                     });
             })
-            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%' . $request->search . '%'))
-            ->when($request->filled('pipeline_id'), fn ($query) => $query->where('pipeline_id', $request->pipeline_id))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
-            ->when($request->boolean('pinned'), fn ($query) => $query->pinned())
+            ->when($request->filled('search'), fn($query) => $query->where('name', 'like', '%' . $request->search . '%'))
+            ->when($request->filled('pipeline_id'), fn($query) => $query->where('pipeline_id', $request->pipeline_id))
+            ->when($request->filled('status'), fn($query) => $query->where('status', $request->status))
+            ->when($request->boolean('pinned'), fn($query) => $query->pinned())
             ->latest()
             ->paginate($request->integer('per_page', 25));
 
@@ -100,7 +105,10 @@ class CampaignController extends Controller
             'data' => $campaign->load([
                 'pipeline.stages.tags',
                 'manager:id,name',
-                'users:id,name,email',
+                'users' => function ($q) {
+                    $q->select('users.id', 'users.name', 'users.email')
+                        ->withExists(['crmSessions as is_online' => fn($query) => $query->where('status', 'online')]);
+                },
                 'contactLists:id,campaign_id,name',
             ]),
         ]);
@@ -275,7 +283,7 @@ class CampaignController extends Controller
     public function leadFunnel(Campaign $campaign)
     {
         $stages = $campaign->pipeline->stages()
-            ->withCount(['leads' => fn ($q) => $q->where('campaign_id', $campaign->id)])
+            ->withCount(['leads' => fn($q) => $q->where('campaign_id', $campaign->id)])
             ->orderBy('sort_order')
             ->get();
 
@@ -284,8 +292,8 @@ class CampaignController extends Controller
 
     public function tagsSummary(Campaign $campaign)
     {
-        $tags = \App\Models\StageTag::whereHas('leads', fn ($q) => $q->where('campaign_id', $campaign->id))
-            ->withCount(['leads' => fn ($q) => $q->where('campaign_id', $campaign->id)])
+        $tags = \App\Models\StageTag::whereHas('leads', fn($q) => $q->where('campaign_id', $campaign->id))
+            ->withCount(['leads' => fn($q) => $q->where('campaign_id', $campaign->id)])
             ->orderByDesc('leads_count')
             ->get();
 
@@ -369,7 +377,7 @@ class CampaignController extends Controller
         $agentIds = $campaign->users()
             ->wherePivot('role', 'agent')
             ->pluck('users.id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
         foreach ($rules as $index => $rule) {
@@ -377,7 +385,7 @@ class CampaignController extends Controller
             $field = trim((string) ($rule['condition_field'] ?? $rule['field'] ?? ''));
             $value = trim((string) ($rule['condition_value'] ?? $rule['value'] ?? ''));
 
-            if (! in_array($userId, $agentIds, true)) {
+            if (!in_array($userId, $agentIds, true)) {
                 throw ValidationException::withMessages([
                     'settings.conditional_rules.' . $index . '.user_id' => 'Selected user must be an agent on this campaign.',
                 ]);
@@ -407,7 +415,7 @@ class CampaignController extends Controller
         $ids = collect($agentIds);
 
         foreach ($rules as $rule) {
-            if (! empty($rule['user_id'])) {
+            if (!empty($rule['user_id'])) {
                 $ids->push((int) $rule['user_id']);
             }
         }

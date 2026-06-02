@@ -12,7 +12,13 @@ class TeamsController extends Controller
 {
     public function index(Request $request)
     {
-        $teams = CrmTeam::with(['teamLead:id,name', 'users:id,name'])
+        $teams = CrmTeam::with([
+            'teamLead:id,name', 
+            'users' => function($q) {
+                $q->select('users.id', 'users.name')
+                  ->withExists(['crmSessions as is_online' => fn ($query) => $query->where('status', 'online')]);
+            }
+        ])
             ->when($request->boolean('active_only'), fn ($query) => $query->active())
             ->orderBy('name')
             ->paginate($request->integer('per_page', 25));
