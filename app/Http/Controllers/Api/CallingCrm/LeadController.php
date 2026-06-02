@@ -15,9 +15,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use App\Traits\CallingCrm\LeadAccess;
 
 class LeadController extends Controller
 {
+    use LeadAccess;
+
     public function __construct(private LeadAssignmentService $assignmentService) {}
 
     public function index(Request $request)
@@ -600,32 +603,7 @@ class LeadController extends Controller
         }
     }
 
-    private function canAccessLead($user, Lead $lead): bool
-    {
-        if (! $user) {
-            return Auth::guard('admin')->check();
-        }
 
-        if ($user->role === 'subadmin') {
-            return true;
-        }
-
-        if ($user->role === 'agent') {
-            return (int) $lead->assigned_user_id === (int) $user->id
-                || (
-                    $lead->assigned_user_id === null
-                    && $lead->campaign()
-                        ->visibleToUser($user->id)
-                        ->where(function ($query) {
-                            $query->where('status', '!=', 'paused')
-                                ->orWhere('hide_paused_from_agents', false);
-                        })
-                        ->exists()
-                );
-        }
-
-        return false;
-    }
 
     private function applyAgentLeadVisibility($query, $user)
     {

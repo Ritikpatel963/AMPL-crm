@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Traits\CallingCrm\LeadAccess;
 
 class CallController extends Controller
 {
+    use LeadAccess;
     public function index(Request $request)
     {
         $calls = CallLog::with(['lead', 'campaign', 'user', 'disposition'])
@@ -267,22 +269,6 @@ class CallController extends Controller
         return response()->json(['status' => true, 'data' => $calls]);
     }
 
-    private function canAccessLead($user, Lead $lead): bool
-    {
-        if (! $user) {
-            return Auth::guard('admin')->check();
-        }
-
-        if ($user->role === 'subadmin') {
-            return true;
-        }
-
-        if ($user->role === 'agent') {
-            return (int) $lead->assigned_user_id === (int) $user->id;
-        }
-
-        return false;
-    }
 
     private function canAccessCall($user, CallLog $call): bool
     {

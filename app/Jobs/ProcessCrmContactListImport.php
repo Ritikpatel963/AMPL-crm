@@ -15,6 +15,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\LazyCollection;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProcessCrmContactListImport implements ShouldQueue
@@ -31,7 +32,7 @@ class ProcessCrmContactListImport implements ShouldQueue
         $this->contactList->update(['status' => 'processing']);
 
         try {
-            $rows = $this->parseFile();
+            $rowsLazy = $this->parseFile();
             $sourceId = LeadSource::where('code', 'FILE_UPLOAD')->value('id');
             $campaignId = $this->contactList->campaign_id;
             $pipelineId = $this->contactList->campaign?->pipeline_id;
@@ -40,82 +41,156 @@ class ProcessCrmContactListImport implements ShouldQueue
             $created = 0;
             $merged = 0;
             $failed = 0;
+            $totalRows = 0;
+            
+            $seenPhonesGlobal = [];
 
-            DB::transaction(function () use ($rows, $sourceId, $campaignId, $pipelineId, $mapping, $assignmentService, &$created, &$merged, &$failed) {
-                $seenPhones = [];
+            $rowsLazy->chunk(500)->each(function ($chunk) use ($sourceId, $campaignId, $pipelineId, $mapping, $assignmentService, &$created, &$merged, &$failed, &$totalRows, &$seenPhonesGlobal) {
+                $chunkValidData = [];
+                $rowsToInsert = [];
+                $phonesToQuery = [];
                 
-                foreach ($rows as $index => $row) {
+                foreach ($chunk as $item) {
+                    $index = $item['index'];
+                    $row = $item['row'];
                     $rowNumber = $index + 1;
+                    $totalRows++;
+                    
                     $rawPhone = $this->resolveMapped($row, $mapping, 'phone', 1);
                     $phone = preg_replace('/[^0-9]+/', '', $rawPhone);
-
+                    
                     try {
                         if (empty($phone)) {
                             throw new \Exception('Phone number is required');
                         }
-
                         if (strlen($phone) < 10) {
                             throw new \Exception("Invalid phone format: {$rawPhone}");
                         }
-                        
-                        if (in_array($phone, $seenPhones)) {
+                        if (isset($seenPhonesGlobal[$phone]) || isset($phonesToQuery[$phone])) {
                             throw new \Exception("Duplicate number in file: {$phone}");
                         }
-                        $seenPhones[] = $phone;
-
+                        
+                        $phonesToQuery[$phone] = true;
+                        
                         $name = $this->resolveMapped($row, $mapping, 'name', 0);
                         $email = $this->resolveMapped($row, $mapping, 'email', 2);
-
-                        $existingLead = Lead::where('campaign_id', $campaignId)
-                            ->where('phone', $phone)
-                            ->exists();
-
-                        if ($existingLead) {
-                            throw new \Exception("Duplicate number in campaign: {$phone}");
-                        } else {
-                            $metadata = [];
-                            foreach ($row as $header => $val) {
-                                $mappedKey = $mapping[$header] ?? null;
-                                if ($mappedKey && $mappedKey !== 'skip') {
-                                    $metadata[$mappedKey] = trim((string)$val);
-                                }
-                                // Also save the raw header name just in case the condition relies on the exact Excel column name
-                                $metadata[$header] = trim((string)$val);
+                        
+                        $metadata = [];
+                        foreach ($row as $header => $val) {
+                            $mappedKey = $mapping[$header] ?? null;
+                            if ($mappedKey && $mappedKey !== 'skip') {
+                                $metadata[$mappedKey] = trim((string)$val);
                             }
+                            $metadata[$header] = trim((string)$val);
+                        }
+                        
+                        $chunkValidData[] = [
+                            'rowNumber' => $rowNumber,
+                            'row' => $row,
+                            'phone' => $phone,
+                            'name' => $name,
+                            'email' => $email,
+                            'metadata' => $metadata,
+                        ];
+                    } catch (\Exception $e) {
+                        $failed++;
+                        $rowsToInsert[] = [
+                            'contact_list_id' => $this->contactList->id,
+                            'lead_id' => null,
+                            'row_number' => $rowNumber,
+                            'raw_payload' => is_array($row) ? json_encode($row) : json_encode([$row]),
+                            'status' => 'failed',
+                            'failure_reason' => $e->getMessage(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
+                
+                $existingPhones = [];
+                if (!empty($phonesToQuery)) {
+                    $existingPhones = Lead::where('campaign_id', $campaignId)
+                        ->whereIn('phone', array_keys($phonesToQuery))
+                        ->pluck('phone')
+                        ->toArray();
+                }
+                $existingPhones = array_flip($existingPhones);
+                
+                $leadsToInsert = [];
+                $validRowsMapping = [];
+                
+                DB::transaction(function () use ($chunkValidData, $existingPhones, $sourceId, $campaignId, $pipelineId, &$created, &$failed, &$seenPhonesGlobal, &$leadsToInsert, &$rowsToInsert, &$validRowsMapping) {
+                    foreach ($chunkValidData as $data) {
+                        $phone = $data['phone'];
+                        if (isset($existingPhones[$phone])) {
+                            $failed++;
+                            $rowsToInsert[] = [
+                                'contact_list_id' => $this->contactList->id,
+                                'lead_id' => null,
+                                'row_number' => $data['rowNumber'],
+                                'raw_payload' => is_array($data['row']) ? json_encode($data['row']) : json_encode([$data['row']]),
+                                'status' => 'failed',
+                                'failure_reason' => "Duplicate number in campaign: {$phone}",
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        } else {
+                            $seenPhonesGlobal[$phone] = true;
                             
-                            $lead = Lead::create([
+                            $leadsToInsert[] = [
                                 'campaign_id' => $campaignId,
                                 'pipeline_id' => $pipelineId,
                                 'source_id' => $sourceId,
                                 'contact_list_id' => $this->contactList->id,
-                                'name' => $name ?: null,
+                                'name' => $data['name'] ?: null,
                                 'phone' => $phone,
-                                'email' => $email ?: null,
+                                'email' => $data['email'] ?: null,
                                 'status' => 'uncontacted',
-                                'metadata' => $metadata,
-                            ]);
-                            $assignmentService->assignLead($lead);
-                            $status = 'created';
-                            $leadId = $lead->id;
-                            $created++;
+                                'metadata' => is_array($data['metadata']) ? json_encode($data['metadata']) : json_encode([]),
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                            
+                            $validRowsMapping[$phone] = [
+                                'rowNumber' => $data['rowNumber'],
+                                'row' => $data['row']
+                            ];
                         }
-
-                        ContactListRow::create([
+                    }
+                    
+                    if (!empty($leadsToInsert)) {
+                        Lead::insert($leadsToInsert);
+                    }
+                    if (!empty($rowsToInsert)) {
+                        ContactListRow::insert($rowsToInsert);
+                    }
+                });
+                
+                if (!empty($leadsToInsert)) {
+                    $phonesInserted = array_column($leadsToInsert, 'phone');
+                    $insertedLeads = Lead::where('campaign_id', $campaignId)->whereIn('phone', $phonesInserted)->get();
+                    
+                    $successRowsToInsert = [];
+                    foreach ($insertedLeads as $lead) {
+                        $assignmentService->assignLead($lead);
+                        $created++;
+                        
+                        $rowData = $validRowsMapping[$lead->phone];
+                        
+                        $successRowsToInsert[] = [
                             'contact_list_id' => $this->contactList->id,
-                            'lead_id' => $leadId,
-                            'row_number' => $rowNumber,
-                            'raw_payload' => $row,
-                            'status' => $status,
-                        ]);
-                    } catch (\Exception $e) {
-                        $failed++;
-                        ContactListRow::create([
-                            'contact_list_id' => $this->contactList->id,
-                            'row_number' => $rowNumber,
-                            'raw_payload' => $row,
-                            'status' => 'failed',
-                            'failure_reason' => $e->getMessage(),
-                        ]);
+                            'lead_id' => $lead->id,
+                            'row_number' => $rowData['rowNumber'],
+                            'raw_payload' => is_array($rowData['row']) ? json_encode($rowData['row']) : json_encode([$rowData['row']]),
+                            'status' => 'created',
+                            'failure_reason' => null,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                    
+                    if (!empty($successRowsToInsert)) {
+                        ContactListRow::insert($successRowsToInsert);
                     }
                 }
             });
@@ -124,7 +199,7 @@ class ProcessCrmContactListImport implements ShouldQueue
 
             $this->contactList->update([
                 'status' => $overallStatus,
-                'total_rows' => count($rows),
+                'total_rows' => $totalRows,
                 'created_rows' => $created,
                 'merged_rows' => $merged,
                 'failed_rows' => $failed,
@@ -153,7 +228,7 @@ class ProcessCrmContactListImport implements ShouldQueue
         return trim((string) ($row[$field] ?? $row[$fallbackIndex] ?? ''));
     }
 
-    private function parseFile(): array
+    private function parseFile(): LazyCollection
     {
         $path = Storage::path($this->contactList->storage_path);
 
@@ -171,44 +246,46 @@ class ProcessCrmContactListImport implements ShouldQueue
         return $this->parseExcel($path);
     }
 
-    private function parseCsv(string $path): array
+    private function parseCsv(string $path): LazyCollection
     {
-        $rows = [];
-        if (($handle = fopen($path, 'r')) !== false) {
+        return LazyCollection::make(function () use ($path) {
+            $handle = fopen($path, 'r');
+            if ($handle === false) return;
+            
             $headers = fgetcsv($handle);
+            $index = 0;
             while (($row = fgetcsv($handle)) !== false) {
                 if (count($row) === count($headers)) {
-                    $rows[] = array_combine($headers, $row);
+                    yield ['index' => $index, 'row' => array_combine($headers, $row)];
                 } else {
-                    $rows[] = $row;
+                    yield ['index' => $index, 'row' => $row];
                 }
+                $index++;
             }
             fclose($handle);
-        }
-        return $rows;
+        });
     }
 
-    private function parseExcel(string $path): array
+    private function parseExcel(string $path): LazyCollection
     {
-        $spreadsheet = IOFactory::load($path);
-        $sheet = $spreadsheet->getActiveSheet();
-        $data = $sheet->toArray();
-
-        if (empty($data)) {
-            return [];
-        }
-
-        $headers = array_shift($data);
-        $rows = [];
-
-        foreach ($data as $row) {
-            if (count($row) === count($headers)) {
-                $rows[] = array_combine($headers, $row);
-            } else {
-                $rows[] = $row;
+        return LazyCollection::make(function () use ($path) {
+            $spreadsheet = IOFactory::load($path);
+            $sheet = $spreadsheet->getActiveSheet();
+            $data = $sheet->toArray();
+            
+            if (empty($data)) return;
+            
+            $headers = array_shift($data);
+            $index = 0;
+            
+            foreach ($data as $row) {
+                if (count($row) === count($headers)) {
+                    yield ['index' => $index, 'row' => array_combine($headers, $row)];
+                } else {
+                    yield ['index' => $index, 'row' => $row];
+                }
+                $index++;
             }
-        }
-
-        return $rows;
+        });
     }
 }
