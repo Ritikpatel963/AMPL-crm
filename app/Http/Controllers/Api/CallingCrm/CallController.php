@@ -187,6 +187,19 @@ class CallController extends Controller
 
     public function webhook(Request $request)
     {
+        $expectedSignature = env('TELEPHONY_WEBHOOK_SECRET');
+        
+        if (empty($expectedSignature) || $request->header('X-Telephony-Signature') !== $expectedSignature) {
+            Log::warning('Unauthorized webhook attempt', [
+                'ip' => $request->ip(),
+                'signature_provided' => $request->hasHeader('X-Telephony-Signature')
+            ]);
+            return response()->json([
+                'status' => false, 
+                'message' => 'Unauthorized: Invalid or missing webhook signature'
+            ], 401);
+        }
+
         $data = $request->validate([
             'provider_call_id' => ['required', 'string', 'max:160'],
             'status' => ['required', Rule::in(['initiated', 'ringing', 'connected', 'answered', 'not_connected', 'busy', 'no_answer', 'failed', 'missed'])],

@@ -277,10 +277,13 @@ class VendorAuthController extends Controller
             }
 
             $otpRecord = VendorOtp::where('phone_number', $normalizedPhone)
-                ->where('otp', $request->otp)
                 ->where('is_verified', false)
                 ->latest()
                 ->first();
+
+            if ($otpRecord && !Hash::check($request->otp, $otpRecord->otp)) {
+                $otpRecord = null; // simulate not found
+            }
 
             Log::info('[REGISTER] OTP record lookup result', [
                 'found'       => !is_null($otpRecord),
@@ -486,22 +489,16 @@ class VendorAuthController extends Controller
         $deleted = VendorOtp::where('phone_number', $phone)->where('is_verified', false)->delete();
         Log::info('[CREATE-OTP] Old OTPs deleted', ['count' => $deleted]);
 
-        $attempts = 0;
-        do {
-            $otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-            $attempts++;
-        } while (
-            VendorOtp::where('otp', $otp)->where('is_verified', false)->where('expires_at', '>=', now())->exists()
-        );
+        $otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
 
         VendorOtp::create([
             'phone_number' => $phone,
-            'otp'          => $otp,
+            'otp'          => Hash::make($otp),
             'expires_at'   => now()->addMinutes(10),
             'is_verified'  => false,
         ]);
 
-        Log::info('[CREATE-OTP] ✅ OTP saved', ['phone' => $phone, 'attempts' => $attempts]);
+        Log::info('[CREATE-OTP] ✅ OTP saved', ['phone' => $phone]);
         return $otp;
     }
 }

@@ -65,7 +65,7 @@ class AdminAuthController extends Controller
 
         VendorOtp::create([
             'phone_number' => $phone,
-            'otp' => $otp,
+            'otp' => Hash::make($otp),
             'expires_at' => now()->addMinutes(10),
             'is_verified' => false,
         ]);
@@ -98,12 +98,11 @@ class AdminAuthController extends Controller
         }
 
         $otpRecord = VendorOtp::where('phone_number', $phone)
-            ->where('otp', $validated['otp'])
             ->where('is_verified', false)
             ->latest()
             ->first();
 
-        if (!$otpRecord) {
+        if (!$otpRecord || !Hash::check($validated['otp'], $otpRecord->otp)) {
             return back()->withErrors(['otp' => 'Invalid OTP. Please check and try again.'])->withInput();
         }
 

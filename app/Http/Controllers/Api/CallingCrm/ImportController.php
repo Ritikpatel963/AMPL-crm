@@ -14,8 +14,8 @@ class ImportController extends Controller
     public function index(Request $request)
     {
         $imports = ContactList::with(['campaign', 'uploadedBy'])
-            ->when($request->filled('campaign_id'), fn ($query) => $query->where('campaign_id', $request->campaign_id))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
+            ->when($request->filled('campaign_id'), fn($query) => $query->where('campaign_id', $request->campaign_id))
+            ->when($request->filled('status'), fn($query) => $query->where('status', $request->status))
             ->latest()
             ->paginate($request->integer('per_page', 25));
 
@@ -34,20 +34,13 @@ class ImportController extends Controller
         $path = $file->store('calling-crm/imports');
 
         $userId = auth()->id();
-        
+
         // Handle case where an Admin is uploading but the table expects a User ID
         if (!\App\Models\User::where('id', $userId)->exists()) {
-            $fallbackUser = \App\Models\User::first();
-            if (!$fallbackUser) {
-                $fallbackUser = \App\Models\User::create([
-                    'name' => 'System Uploader',
-                    'email' => 'system_uploader_' . time() . '@example.com',
-                    'password' => bcrypt('password'),
-                    'role' => 'subadmin',
-                    'crm_status' => 'active',
-                ]);
-            }
-            $userId = $fallbackUser->id;
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized: Only CRM users (agents/subadmins) can upload contact lists.',
+            ], 403);
         }
 
         $import = ContactList::create([
@@ -83,8 +76,8 @@ class ImportController extends Controller
     {
         $rows = $import->rows()
             ->with('lead')
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
-            ->when($request->filled('search'), fn ($query) => $query->where('raw_payload', 'like', '%' . $request->search . '%'))
+            ->when($request->filled('status'), fn($query) => $query->where('status', $request->status))
+            ->when($request->filled('search'), fn($query) => $query->where('raw_payload', 'like', '%' . $request->search . '%'))
             ->orderBy('row_number')
             ->paginate($request->integer('per_page', 50));
 
@@ -250,7 +243,7 @@ class ImportController extends Controller
 
         $filename = 'failed_rows_import_' . $import->id . '_' . time() . '.csv';
         $path = storage_path('app/temp/' . $filename);
-        
+
         if (!file_exists(storage_path('app/temp'))) {
             mkdir(storage_path('app/temp'), 0755, true);
         }

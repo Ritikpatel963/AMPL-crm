@@ -267,7 +267,7 @@ class AuthController extends Controller
 
             VendorOtp::create([
                 'phone_number' => $phone,
-                'otp'          => $otp,
+                'otp'          => Hash::make($otp),
                 'expires_at'   => now()->addMinutes(10),
                 'is_verified'  => false,
             ]);
@@ -369,10 +369,13 @@ class AuthController extends Controller
             ]);
 
             $otpRecord = VendorOtp::where('phone_number', $phone)
-                ->where('otp', $request->otp)
                 ->where('is_verified', false)   // only unused OTPs
                 ->latest()
                 ->first();
+
+            if ($otpRecord && !Hash::check($request->otp, $otpRecord->otp)) {
+                $otpRecord = null; // simulate not found to prevent leaking existence
+            }
 
             Log::info('[LOGIN] OTP record lookup result', [
                 'found'        => !is_null($otpRecord),
@@ -491,5 +494,23 @@ class AuthController extends Controller
             'status' => true,
             'message' => 'Logged out successfully.',
         ]);
+    }
+    private function checkOtpRateLimit(string $phone): ?array
+    {
+        $key = 'otp-attempts:' . $phone;
+
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $seconds = RateLimiter::availableIn($key);
+            $minutes = ceil($seconds / 60);
+            Log::warning('[OTP] ⛔ Rate limit hit', ['phone' => $phone, 'retry_in' => $seconds]);
+            return [
+                'status'  => false,
+                'message' => "Too many OTP requests. Please try again in {$minutes} minute(s).",
+            ];
+        }
+
+        RateLimiter::hit($key, 3600);
+        Log::info('[OTP] Attempt registered', ['phone' => $phone, 'attempts' => RateLimiter::attempts($key)]);
+        return null;
     }
 }
