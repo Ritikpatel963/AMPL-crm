@@ -193,6 +193,15 @@ class LeadController extends Controller
             'campaign_id' => ['nullable', 'exists:campaigns,id'],
         ]);
 
+        $data['lead_ids'] = $this->filterAuthorizedLeadIds($request, $data['lead_ids']);
+        if (empty($data['lead_ids'])) {
+            return response()->json([
+                'status' => true,
+                'message' => 'No authorized leads found',
+                'data' => ['updated' => 0],
+            ]);
+        }
+
         $affectedCampaignIds = Lead::whereIn('id', $data['lead_ids'])
             ->pluck('campaign_id')
             ->filter()
@@ -327,6 +336,15 @@ class LeadController extends Controller
             'status' => ['sometimes', Rule::in(['uncontacted', 'in_progress', 'converted', 'lost', 'closed', 'reopened'])],
         ]);
 
+        $data['lead_ids'] = $this->filterAuthorizedLeadIds($request, $data['lead_ids']);
+        if (empty($data['lead_ids'])) {
+            return response()->json([
+                'status' => true,
+                'message' => 'No authorized leads found',
+                'data' => ['updated' => 0],
+            ]);
+        }
+
         $updates = [];
 
         foreach (['assigned_user_id', 'stage_id', 'tag_id', 'status'] as $field) {
@@ -367,6 +385,15 @@ class LeadController extends Controller
             'campaign_id' => ['required', 'exists:campaigns,id'],
         ]);
 
+        $data['lead_ids'] = $this->filterAuthorizedLeadIds($request, $data['lead_ids']);
+        if (empty($data['lead_ids'])) {
+            return response()->json([
+                'status' => true,
+                'message' => 'No authorized leads found',
+                'data' => ['moved' => 0],
+            ]);
+        }
+
         $campaign = Campaign::findOrFail($data['campaign_id']);
         $affectedCampaignIds = Lead::whereIn('id', $data['lead_ids'])
             ->pluck('campaign_id')
@@ -399,6 +426,15 @@ class LeadController extends Controller
             'lead_ids.*' => ['exists:leads,id'],
             'campaign_id' => ['required', 'exists:campaigns,id'],
         ]);
+
+        $data['lead_ids'] = $this->filterAuthorizedLeadIds($request, $data['lead_ids']);
+        if (empty($data['lead_ids'])) {
+            return response()->json([
+                'status' => true,
+                'message' => 'No authorized leads found',
+                'data' => ['copied' => 0],
+            ]);
+        }
 
         $campaign = Campaign::findOrFail($data['campaign_id']);
 
@@ -435,6 +471,15 @@ class LeadController extends Controller
             'tag_id' => ['nullable', 'exists:stage_tags,id'],
         ]);
 
+        $data['lead_ids'] = $this->filterAuthorizedLeadIds($request, $data['lead_ids']);
+        if (empty($data['lead_ids'])) {
+            return response()->json([
+                'status' => true,
+                'message' => 'No authorized leads found',
+                'data' => ['closed' => 0],
+            ]);
+        }
+
         Lead::whereIn('id', $data['lead_ids'])
             ->update([
                 'status' => 'closed',
@@ -456,6 +501,15 @@ class LeadController extends Controller
             'lead_ids.*' => ['exists:leads,id'],
         ]);
 
+        $data['lead_ids'] = $this->filterAuthorizedLeadIds($request, $data['lead_ids']);
+        if (empty($data['lead_ids'])) {
+            return response()->json([
+                'status' => true,
+                'message' => 'No authorized leads found',
+                'data' => ['deleted' => 0],
+            ]);
+        }
+
         $affectedCampaignIds = Lead::whereIn('id', $data['lead_ids'])
             ->pluck('campaign_id')
             ->filter()
@@ -469,6 +523,27 @@ class LeadController extends Controller
             'message' => 'Leads deleted successfully',
             'data' => ['deleted' => count($data['lead_ids'])],
         ]);
+    }
+
+    private function filterAuthorizedLeadIds(Request $request, array $leadIds): array
+    {
+        $user = $request->user();
+        
+        if (! $user) {
+            return \Illuminate\Support\Facades\Auth::guard('admin')->check() ? $leadIds : [];
+        }
+        
+        if ($user->role === 'subadmin') {
+            return $leadIds;
+        }
+        
+        if ($user->role === 'agent') {
+            return $this->applyAgentLeadVisibility(Lead::whereIn('id', $leadIds), $user)
+                ->pluck('id')
+                ->all();
+        }
+        
+        return [];
     }
 
     private function validateLead(Request $request, bool $partial = false, ?Lead $lead = null): array
