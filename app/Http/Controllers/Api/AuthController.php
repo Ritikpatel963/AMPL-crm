@@ -495,22 +495,4 @@ class AuthController extends Controller
             'message' => 'Logged out successfully.',
         ]);
     }
-    private function checkOtpRateLimit(string $phone): ?array
-    {
-        $key = 'otp-attempts:' . $phone;
-
-        if (RateLimiter::tooManyAttempts($key, 3)) {
-            $seconds = RateLimiter::availableIn($key);
-            $minutes = ceil($seconds / 60);
-            Log::warning('[OTP] ⛔ Rate limit hit', ['phone' => $phone, 'retry_in' => $seconds]);
-            return [
-                'status'  => false,
-                'message' => "Too many OTP requests. Please try again in {$minutes} minute(s).",
-            ];
-        }
-
-        RateLimiter::hit($key, 3600);
-        Log::info('[OTP] Attempt registered', ['phone' => $phone, 'attempts' => RateLimiter::attempts($key)]);
-        return null;
-    }
 }

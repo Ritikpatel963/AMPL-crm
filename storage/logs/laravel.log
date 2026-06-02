@@ -41016,3 +41016,57 @@ Did you mean one of these?
 #63 {main}
 "} 
 [2026-06-02 12:31:30] local.ERROR: Debugbar exception: No connection could be made because the target machine actively refused it [tcp://localhost:6379]  
+[2026-06-02 13:37:47] testing.ERROR: Cannot redeclare App\Http\Controllers\Api\AuthController::checkOtpRateLimit() {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot redeclare App\\Http\\Controllers\\Api\\AuthController::checkOtpRateLimit() at E:\\website-project\\Amplchat\\CMS\\app\\Http\\Controllers\\Api\\AuthController.php:498)
+[stacktrace]
+#0 {main}
+"} 
+[2026-06-02 13:37:47] testing.ERROR: Cannot redeclare App\Http\Controllers\Api\AuthController::checkOtpRateLimit() {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot redeclare App\\Http\\Controllers\\Api\\AuthController::checkOtpRateLimit() at E:\\website-project\\Amplchat\\CMS\\app\\Http\\Controllers\\Api\\AuthController.php:498)
+[stacktrace]
+#0 {main}
+"} 
+[2026-06-02 13:37:47] testing.ERROR: Cannot redeclare App\Http\Controllers\Api\AuthController::checkOtpRateLimit() {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot redeclare App\\Http\\Controllers\\Api\\AuthController::checkOtpRateLimit() at E:\\website-project\\Amplchat\\CMS\\app\\Http\\Controllers\\Api\\AuthController.php:498)
+[stacktrace]
+#0 {main}
+"} 
+[2026-06-02 13:37:54] testing.ERROR: Cannot redeclare App\Http\Controllers\Api\AuthController::checkOtpRateLimit() {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot redeclare App\\Http\\Controllers\\Api\\AuthController::checkOtpRateLimit() at E:\\website-project\\Amplchat\\CMS\\app\\Http\\Controllers\\Api\\AuthController.php:498)
+[stacktrace]
+#0 {main}
+"} 
+[2026-06-02 13:37:54] testing.ERROR: Cannot redeclare App\Http\Controllers\Api\AuthController::checkOtpRateLimit() {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot redeclare App\\Http\\Controllers\\Api\\AuthController::checkOtpRateLimit() at E:\\website-project\\Amplchat\\CMS\\app\\Http\\Controllers\\Api\\AuthController.php:498)
+[stacktrace]
+#0 {main}
+"} 
+[2026-06-02 13:37:54] testing.ERROR: Cannot redeclare App\Http\Controllers\Api\AuthController::checkOtpRateLimit() {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot redeclare App\\Http\\Controllers\\Api\\AuthController::checkOtpRateLimit() at E:\\website-project\\Amplchat\\CMS\\app\\Http\\Controllers\\Api\\AuthController.php:498)
+[stacktrace]
+#0 {main}
+"} 
+[2026-06-02 13:39:41] testing.INFO: [LOGIN-SEND-OTP] ═══════════ New Request ═══════════  
+[2026-06-02 13:39:41] testing.INFO: [LOGIN-SEND-OTP] Raw input {"raw_phone":"919876543210"} 
+[2026-06-02 13:39:42] testing.INFO: [LOGIN-SEND-OTP] Phone normalized {"raw":"919876543210","normalized":"919876543210"} 
+[2026-06-02 13:39:42] testing.INFO: [LOGIN-SEND-OTP] User lookup result {"phone":"919876543210","user_found":false,"user_id":null,"role":null,"approval_status":null} 
+[2026-06-02 13:39:42] testing.INFO: [LOGIN-SEND-OTP] 🆕 Auto-registering new customer {"phone":"919876543210"} 
+[2026-06-02 13:39:42] testing.WARNING: [OTP] ⛔ Rate limit hit {"phone":"919876543210","retry_in":3599} 
+[2026-06-02 13:41:42] testing.INFO: [LOGIN-SEND-OTP] ═══════════ New Request ═══════════  
+[2026-06-02 13:41:42] testing.INFO: [LOGIN-SEND-OTP] Raw input {"raw_phone":"919876543210"} 
+[2026-06-02 13:41:42] testing.INFO: [LOGIN-SEND-OTP] Phone normalized {"raw":"919876543210","normalized":"919876543210"} 
+[2026-06-02 13:41:42] testing.INFO: [LOGIN-SEND-OTP] User lookup result {"phone":"919876543210","user_found":false,"user_id":null,"role":null,"approval_status":null} 
+[2026-06-02 13:41:42] testing.INFO: [LOGIN-SEND-OTP] 🆕 Auto-registering new customer {"phone":"919876543210"} 
+[2026-06-02 13:41:42] testing.WARNING: [OTP] ⛔ Rate limit hit {"phone":"919876543210","retry_in":3600} 
+[2026-06-02 13:42:27] testing.INFO: [LOGIN-SEND-OTP] ═══════════ New Request ═══════════  
+[2026-06-02 13:42:27] testing.INFO: [LOGIN-SEND-OTP] Raw input {"raw_phone":"919876543210"} 
+[2026-06-02 13:42:27] testing.INFO: [LOGIN-SEND-OTP] Phone normalized {"raw":"919876543210","normalized":"919876543210"} 
+[2026-06-02 13:42:27] testing.INFO: [LOGIN-SEND-OTP] User lookup result {"phone":"919876543210","user_found":false,"user_id":null,"role":null,"approval_status":null} 
+[2026-06-02 13:42:27] testing.INFO: [LOGIN-SEND-OTP] 🆕 Auto-registering new customer {"phone":"919876543210"} 
+[2026-06-02 13:42:27] testing.WARNING: [OTP] ⛔ Rate limit hit {"phone":"919876543210","retry_in":3600} 
+[2026-06-02 13:44:49] testing.INFO: [LOGIN-SEND-OTP] ═══════════ New Request ═══════════  
+[2026-06-02 13:44:49] testing.INFO: [LOGIN-SEND-OTP] Raw input {"raw_phone":"919876543210"} 
+[2026-06-02 13:44:49] testing.INFO: [LOGIN-SEND-OTP] Phone normalized {"raw":"919876543210","normalized":"919876543210"} 
+[2026-06-02 13:44:49] testing.INFO: [LOGIN-SEND-OTP] User lookup result {"phone":"919876543210","user_found":false,"user_id":null,"role":null,"approval_status":null} 
+[2026-06-02 13:44:49] testing.INFO: [LOGIN-SEND-OTP] 🆕 Auto-registering new customer {"phone":"919876543210"} 
+[2026-06-02 13:44:49] testing.WARNING: [OTP] ⛔ Rate limit hit {"phone":"919876543210","retry_in":3600} 
+[2026-06-02 13:45:50] testing.INFO: [LOGIN-SEND-OTP] ═══════════ New Request ═══════════  
+[2026-06-02 13:45:50] testing.INFO: [LOGIN-SEND-OTP] Raw input {"raw_phone":"919876543210"} 
+[2026-06-02 13:45:50] testing.INFO: [LOGIN-SEND-OTP] Phone normalized {"raw":"919876543210","normalized":"919876543210"} 
+[2026-06-02 13:45:50] testing.INFO: [LOGIN-SEND-OTP] User lookup result {"phone":"919876543210","user_found":false,"user_id":null,"role":null,"approval_status":null} 
+[2026-06-02 13:45:50] testing.INFO: [LOGIN-SEND-OTP] 🆕 Auto-registering new customer {"phone":"919876543210"} 
+[2026-06-02 13:45:50] testing.WARNING: [OTP] ⛔ Rate limit hit {"phone":"919876543210","retry_in":3600} 
