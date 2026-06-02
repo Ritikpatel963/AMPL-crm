@@ -159,6 +159,8 @@ class ReportController extends Controller
 
         // Consolidated lead stats into a single query instead of 2 separate queries
         $leadStats = Lead::query()
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->from))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->to))
             ->selectRaw('SUM(status = "converted") as total_converted_leads')
             ->selectRaw('SUM(status = "lost") as total_lost_leads')
             ->first();
@@ -166,7 +168,10 @@ class ReportController extends Controller
         return response()->json([
             'status' => true,
             'data' => [
-                'total_sms_sent' => CommunicationEvent::where('channel', 'sms')->count(),
+                'total_sms_sent' => CommunicationEvent::where('channel', 'sms')
+                    ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->from))
+                    ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->to))
+                    ->count(),
                 'total_calls' => (int) ($callStats->total_calls ?? 0),
                 'total_converted_leads' => (int) ($leadStats->total_converted_leads ?? 0),
                 'total_call_time_seconds' => (int) ($callStats->total_call_time_seconds ?? 0),
@@ -187,9 +192,11 @@ class ReportController extends Controller
         return response()->json(['status' => true, 'data' => $rows]);
     }
 
-    public function leadSources()
+    public function leadSources(Request $request)
     {
         $rows = Lead::query()
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->from))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->to))
             ->select('source', DB::raw('count(*) as total'))
             ->groupBy('source')
             ->orderByDesc('total')
