@@ -37,7 +37,7 @@ class ReportController extends Controller
         // Consolidated into a single query instead of 3 separate count queries
         $stats = $this->dateFilteredCalls($request)
             ->selectRaw('COUNT(*) as total_calls')
-            ->selectRaw('SUM(status IN ("connected", "answered")) as connected_calls')
+            ->selectRaw('SUM(CASE WHEN status IN ("connected", "answered") THEN 1 ELSE 0 END) as connected_calls')
             ->first();
 
         $totalCalls = (int) ($stats->total_calls ?? 0);
@@ -60,7 +60,7 @@ class ReportController extends Controller
         $agentCounts = User::query()
             ->whereIn('role', ['agent', 'subadmin'])
             ->selectRaw('COUNT(*) as total_agents')
-            ->selectRaw('SUM(crm_status = "active" AND last_seen_at IS NOT NULL) as active_agents')
+            ->selectRaw('SUM(CASE WHEN crm_status = "active" AND last_seen_at IS NOT NULL THEN 1 ELSE 0 END) as active_agents')
             ->first();
 
         $onBreak = DB::table('user_breaks')
@@ -153,7 +153,7 @@ class ReportController extends Controller
         // Consolidated call stats into a single query instead of 4 separate queries
         $callStats = $this->dateFilteredCalls($request)
             ->selectRaw('COUNT(*) as total_calls')
-            ->selectRaw('SUM(status IN ("connected", "answered")) as total_calls_connected')
+            ->selectRaw('SUM(CASE WHEN status IN ("connected", "answered") THEN 1 ELSE 0 END) as total_calls_connected')
             ->selectRaw('COALESCE(SUM(duration_seconds), 0) as total_call_time_seconds')
             ->first();
 
@@ -161,8 +161,8 @@ class ReportController extends Controller
         $leadStats = Lead::query()
             ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->from))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->to))
-            ->selectRaw('SUM(status = "converted") as total_converted_leads')
-            ->selectRaw('SUM(status = "lost") as total_lost_leads')
+            ->selectRaw('SUM(CASE WHEN status = "converted" THEN 1 ELSE 0 END) as total_converted_leads')
+            ->selectRaw('SUM(CASE WHEN status = "lost" THEN 1 ELSE 0 END) as total_lost_leads')
             ->first();
 
         return response()->json([
@@ -184,7 +184,7 @@ class ReportController extends Controller
     public function callsVsConnected(Request $request)
     {
         $rows = $this->dateFilteredCalls($request)
-            ->selectRaw('DATE(started_at) as date, COUNT(*) as total_calls, SUM(status in ("connected", "answered")) as connected_calls')
+            ->selectRaw('DATE(started_at) as date, COUNT(*) as total_calls, SUM(CASE WHEN status in ("connected", "answered") THEN 1 ELSE 0 END) as connected_calls')
             ->groupByRaw('DATE(started_at)')
             ->orderBy('date')
             ->get();
