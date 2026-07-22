@@ -159,32 +159,99 @@ class CallController extends Controller
                 'size' => $size,
             ]);
 
+            // Store the original file first
             $path = $file->store("calling-crm/recordings/{$call->id}", 'public');
+            $storedAbsPath = Storage::disk('public')->path($path);
+
+            // Try to convert to MP3 so browsers can play it
+            $mp3RelPath = "calling-crm/recordings/{$call->id}/" . pathinfo($originalName, PATHINFO_FILENAME) . '.mp3';
+            $mp3AbsPath = Storage::disk('public')->path($mp3RelPath);
+
+            $ffmpegPath = $this->findFfmpeg();
+            $converted  = false;
+
+            if ($ffmpegPath) {
+                @mkdir(dirname($mp3AbsPath), 0775, true);
+                $cmd = escapeshellarg($ffmpegPath)
+                    . ' -y -i ' . escapeshellarg($storedAbsPath)
+                    . ' -vn -ar 44100 -ac 1 -ab 64k -f mp3 '
+                    . escapeshellarg($mp3AbsPath)
+                    . ' 2>&1';
+                exec($cmd, $cmdOut, $exitCode);
+
+                if ($exitCode === 0 && file_exists($mp3AbsPath) && filesize($mp3AbsPath) > 0) {
+                    // Delete original, use mp3
+                    @unlink($storedAbsPath);
+                    $path       = $mp3RelPath;
+                    $converted  = true;
+                    Log::info("uploadRecording: Converted to MP3 for call_id {$call->id}");
+                } else {
+                    Log::warning("uploadRecording: FFmpeg conversion failed for call_id {$call->id}", ['output' => implode("\n", $cmdOut)]);
+                }
+            } else {
+                Log::info("uploadRecording: FFmpeg not found, saving original format for call_id {$call->id}");
+            }
+
             $url = Storage::disk('public')->url($path);
+
+            // Ensure URL always points to the correct live domain
+            // (APP_URL may be set to UAT domain on the server)
+            $url = str_replace(
+                'https://uatamplchat.agromarket.co.in',
+                'https://amplchat.agromarket.co.in',
+                $url
+            );
+            $url = str_replace(
+                'http://uatamplchat.agromarket.co.in',
+                'https://amplchat.agromarket.co.in',
+                $url
+            );
 
             $call->update([
                 'recording_url' => $url,
             ]);
 
             Log::info("uploadRecording: Recording uploaded successfully for call_id {$call->id}", [
-                'path' => $path,
-                'url' => $url,
+                'path'      => $path,
+                'url'       => $url,
+                'converted' => $converted,
             ]);
 
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => 'Recording uploaded successfully',
-                'data' => $call->fresh(['lead', 'campaign', 'user']),
+                'data'    => $call->fresh(['lead', 'campaign', 'user']),
             ]);
         } catch (\Exception $e) {
             Log::error("uploadRecording: Error saving recording for call_id {$call->id}: " . $e->getMessage(), [
                 'exception' => $e
             ]);
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Internal server error uploading recording'
             ], 500);
         }
+    }
+
+    /**
+     * Try to find the ffmpeg binary in common locations.
+     */
+    private function findFfmpeg(): ?string
+    {
+        $candidates = [
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
+            '/opt/ffmpeg/bin/ffmpeg',
+            trim((string) shell_exec('which ffmpeg 2>/dev/null')),
+        ];
+
+        foreach ($candidates as $bin) {
+            if ($bin && is_executable($bin)) {
+                return $bin;
+            }
+        }
+
+        return null;
     }
 
     public function webhook(Request $request)

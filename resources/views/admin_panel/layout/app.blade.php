@@ -21,6 +21,7 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
+    <link rel="stylesheet" href="{{ asset('css/admin-datatables.css') }}?v=1.2">
 </head>
 
 <body class="{{ request()->routeIs('admin_panel.admin.callingcrm.*') ? 'calling-crm-page' : '' }}">

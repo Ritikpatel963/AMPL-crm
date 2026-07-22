@@ -10,10 +10,15 @@ use App\Models\CrmUserSession;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\LeadDisposition;
+use App\Models\LeadStage;
+use App\Models\Pipeline;
 use App\Models\ReportExport;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ReportController extends Controller
 {
@@ -23,6 +28,7 @@ class ReportController extends Controller
             'status' => true,
             'data' => [
                 ['name' => 'Lead Disposition Report', 'category' => 'User Reports', 'slug' => 'lead-disposition'],
+                ['name' => 'User Stage Report', 'category' => 'User Reports', 'slug' => 'user-stage'],
                 ['name' => 'User Call Report', 'category' => 'User Reports', 'slug' => 'user-call'],
                 ['name' => 'Follow-Up Report', 'category' => 'User Reports', 'slug' => 'follow-ups'],
                 ['name' => 'Campaign Report', 'category' => 'Campaign Reports', 'slug' => 'campaign'],
@@ -97,20 +103,363 @@ class ReportController extends Controller
 
     public function userCallReport(Request $request)
     {
-        $rows = User::query()
-            ->select('users.id', 'users.name', 'users.phone_number')
-            ->withCount([
-                'callLogs as total_calls' => fn ($query) => $this->applyDateFilter($query, $request, 'started_at'),
-                'callLogs as connected_calls' => fn ($query) => $this->applyDateFilter($query->connected(), $request, 'started_at'),
-                'leadDispositions as disposed_count' => fn ($query) => $this->applyDateFilter($query, $request, 'disposed_at'),
-                'assignedLeads as in_progress_leads' => fn ($query) => $query->where('status', 'in_progress'),
-                'assignedLeads as converted_leads' => fn ($query) => $query->where('status', 'converted'),
-                'assignedLeads as lost_leads' => fn ($query) => $query->where('status', 'lost'),
-                'followUps as follow_ups_due_today' => fn ($query) => $query->whereDate('scheduled_at', today()),
-            ])
+        $rows = $this->userCallReportQuery($request)
             ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
+        $rows->setCollection($this->appendUserReportMetrics($rows->getCollection(), $request));
+
         return response()->json(['status' => true, 'data' => $rows]);
+    }
+
+    public function userActivityReport(Request $request)
+    {
+        return $this->userCallReport($request);
+    }
+
+    public function exportUserCallReport(Request $request)
+    {
+        $users = $this->appendUserReportMetrics($this->userCallReportQuery($request)->get(), $request);
+        $rows = $this->formatUserReportExportRows($users, $request);
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('User Report');
+
+        $headers = [
+            'No.',
+            'User Name',
+            'Reporting Manager',
+            'Mobile Number',
+            'Date',
+            'Total Calls',
+            'Total Calls Connected',
+            'Total Unconnected Calls',
+            'Total Outgoing Calls',
+            'Outgoing Connected Calls',
+            'Outgoing Unanswered Calls',
+            'Avg. Outgoing Call Duration',
+            'Total Incoming Calls',
+            'Incoming Connected Calls',
+            'Incoming Unanswered Calls',
+            'Avg. Incoming Call Duration',
+            'Total Disposed Count',
+            'Disposed Yes Connected Count',
+            'Disposed Not Connected Count',
+            'Total In-Progress Leads',
+            'Total Converted Leads',
+            'Total Lost Leads',
+            'Follow-Ups Due Today',
+            'Avg. Start Calling Time',
+            'Avg. Call Duration',
+            'Avg. Form Filling Time',
+            'Total Call Duration',
+            'Total Number of Breaks',
+            'Total Break Duration',
+            'Total Whatsapp Sent',
+            'Total Emails Sent',
+            'Total SMS Sent',
+        ];
+
+        $sheet->fromArray($headers, null, 'A1');
+        if ($rows) {
+            $sheet->fromArray($rows, null, 'A2');
+        }
+
+        $lastColumn = $sheet->getHighestColumn();
+        $sheet->freezePane('C2');
+        $sheet->getStyle("A1:{$lastColumn}1")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '6F42C1']],
+        ]);
+
+        for ($column = 1; $column <= count($headers); $column++) {
+            $sheet->getColumnDimensionByColumn($column)->setAutoSize(true);
+        }
+
+        $fileName = sprintf('user-report-%s-to-%s.xlsx', $request->input('from', now()->toDateString()), $request->input('to', now()->toDateString()));
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            (new Xlsx($spreadsheet))->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
+    }
+
+    private function userCallReportQuery(Request $request)
+    {
+        $userIds = $this->idsFromRequest($request, 'user_ids');
+        $managerIds = $this->idsFromRequest($request, 'manager_ids');
+        $includeNoManager = in_array('none', (array) $request->input('manager_ids', []), true)
+            || str_contains((string) $request->input('manager_ids', ''), 'none');
+
+        return User::query()
+            ->select('users.id', 'users.reporting_manager_id', 'users.name', 'users.phone_number')
+            ->with('reportingManager:id,name')
+            ->whereIn('users.role', ['agent', 'subadmin'])
+            ->when($userIds, fn ($query) => $query->whereIn('users.id', $userIds))
+            ->when($managerIds || $includeNoManager, function ($query) use ($managerIds, $includeNoManager) {
+                $query->where(function ($query) use ($managerIds, $includeNoManager) {
+                    if ($managerIds) {
+                        $query->whereIn('users.reporting_manager_id', $managerIds);
+                    }
+
+                    if ($includeNoManager) {
+                        $query->orWhereNull('users.reporting_manager_id');
+                    }
+                });
+            })
+            ->orderBy('users.name');
+    }
+
+    private function appendUserReportMetrics($users, Request $request)
+    {
+        $pageUserIds = $users->pluck('id')->all();
+
+        if ($pageUserIds) {
+            $connected = ['connected', 'answered'];
+            $notConnected = ['not_connected', 'busy', 'no_answer', 'failed', 'missed'];
+            $sentStatuses = ['sent', 'delivered', 'read'];
+
+            $calls = $this->applyDateFilter(DB::table('call_logs'), $request, 'started_at')
+                ->whereIn('user_id', $pageUserIds)
+                ->select('user_id')
+                ->selectRaw('COUNT(*) as total_calls')
+                ->selectRaw('SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) as connected_calls', $connected)
+                ->selectRaw('SUM(CASE WHEN status IN (?, ?, ?, ?, ?) THEN 1 ELSE 0 END) as unconnected_calls', $notConnected)
+                ->selectRaw('SUM(CASE WHEN direction = "outgoing" THEN 1 ELSE 0 END) as outgoing_calls')
+                ->selectRaw('SUM(CASE WHEN direction = "outgoing" AND status IN (?, ?) THEN 1 ELSE 0 END) as outgoing_connected_calls', $connected)
+                ->selectRaw('SUM(CASE WHEN direction = "outgoing" AND status IN (?, ?, ?, ?, ?) THEN 1 ELSE 0 END) as outgoing_unanswered_calls', $notConnected)
+                ->selectRaw('AVG(CASE WHEN direction = "outgoing" THEN duration_seconds END) as avg_outgoing_call_duration_seconds')
+                ->selectRaw('SUM(CASE WHEN direction = "incoming" THEN 1 ELSE 0 END) as incoming_calls')
+                ->selectRaw('SUM(CASE WHEN direction = "incoming" AND status IN (?, ?) THEN 1 ELSE 0 END) as incoming_connected_calls', $connected)
+                ->selectRaw('SUM(CASE WHEN direction = "incoming" AND status IN (?, ?, ?, ?, ?) THEN 1 ELSE 0 END) as incoming_unanswered_calls', $notConnected)
+                ->selectRaw('AVG(CASE WHEN direction = "incoming" THEN duration_seconds END) as avg_incoming_call_duration_seconds')
+                ->selectRaw('AVG(duration_seconds) as avg_call_duration_seconds')
+                ->selectRaw('SUM(duration_seconds) as total_call_duration_seconds')
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            $dispositions = $this->applyDateFilter(DB::table('lead_dispositions'), $request, 'disposed_at')
+                ->whereIn('user_id', $pageUserIds)
+                ->select('user_id')
+                ->selectRaw('COUNT(*) as disposed_count')
+                ->selectRaw('SUM(CASE WHEN call_status IN (?, ?) THEN 1 ELSE 0 END) as disposed_connected_count', $connected)
+                ->selectRaw('SUM(CASE WHEN call_status IN (?, ?, ?, ?, ?) THEN 1 ELSE 0 END) as disposed_not_connected_count', $notConnected)
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            $leads = DB::table('leads')
+                ->whereIn('assigned_user_id', $pageUserIds)
+                ->select('assigned_user_id')
+                ->selectRaw('SUM(CASE WHEN status = "in_progress" THEN 1 ELSE 0 END) as in_progress_leads')
+                ->selectRaw('SUM(CASE WHEN status = "converted" THEN 1 ELSE 0 END) as converted_leads')
+                ->selectRaw('SUM(CASE WHEN status = "lost" THEN 1 ELSE 0 END) as lost_leads')
+                ->groupBy('assigned_user_id')
+                ->get()
+                ->keyBy('assigned_user_id');
+
+            $followUps = DB::table('follow_ups')
+                ->whereIn('user_id', $pageUserIds)
+                ->whereDate('scheduled_at', today())
+                ->select('user_id')
+                ->selectRaw('COUNT(*) as follow_ups_due_today')
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            $breaks = $this->applyDateFilter(DB::table('user_breaks'), $request, 'started_at')
+                ->whereIn('user_id', $pageUserIds)
+                ->select('user_id')
+                ->selectRaw('COUNT(*) as total_breaks')
+                ->selectRaw('SUM(duration_seconds) as total_break_duration_seconds')
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            $communications = $this->applyDateFilter(DB::table('communication_events'), $request, 'sent_at')
+                ->whereIn('user_id', $pageUserIds)
+                ->whereIn('status', $sentStatuses)
+                ->select('user_id')
+                ->selectRaw('SUM(CASE WHEN channel = "whatsapp" THEN 1 ELSE 0 END) as whatsapp_sent')
+                ->selectRaw('SUM(CASE WHEN channel = "email" THEN 1 ELSE 0 END) as emails_sent')
+                ->selectRaw('SUM(CASE WHEN channel = "sms" THEN 1 ELSE 0 END) as sms_sent')
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            $activityMetrics = $this->activityMetricsByUser($pageUserIds, $request);
+
+            $users->transform(function (User $user) use ($calls, $dispositions, $leads, $followUps, $breaks, $communications, $activityMetrics) {
+                foreach ([
+                    'total_calls', 'connected_calls', 'unconnected_calls', 'outgoing_calls', 'outgoing_connected_calls',
+                    'outgoing_unanswered_calls', 'avg_outgoing_call_duration_seconds', 'incoming_calls',
+                    'incoming_connected_calls', 'incoming_unanswered_calls', 'avg_incoming_call_duration_seconds',
+                    'avg_call_duration_seconds', 'total_call_duration_seconds',
+                ] as $field) {
+                    $user->{$field} = (float) ($calls[$user->id]->{$field} ?? 0);
+                }
+
+                foreach (['disposed_count', 'disposed_connected_count', 'disposed_not_connected_count'] as $field) {
+                    $user->{$field} = (int) ($dispositions[$user->id]->{$field} ?? 0);
+                }
+
+                foreach (['in_progress_leads', 'converted_leads', 'lost_leads'] as $field) {
+                    $user->{$field} = (int) ($leads[$user->id]->{$field} ?? 0);
+                }
+
+                $user->follow_ups_due_today = (int) ($followUps[$user->id]->follow_ups_due_today ?? 0);
+                $user->total_breaks = (int) ($breaks[$user->id]->total_breaks ?? 0);
+                $user->total_break_duration_seconds = (float) ($breaks[$user->id]->total_break_duration_seconds ?? 0);
+                $user->whatsapp_sent = (int) ($communications[$user->id]->whatsapp_sent ?? 0);
+                $user->emails_sent = (int) ($communications[$user->id]->emails_sent ?? 0);
+                $user->sms_sent = (int) ($communications[$user->id]->sms_sent ?? 0);
+                $user->avg_start_calling_time = $activityMetrics[$user->id]['avg_start_calling_time'] ?? null;
+                $user->avg_form_filling_time_seconds = $activityMetrics[$user->id]['avg_form_filling_time_seconds'] ?? 0;
+
+                return $user;
+            });
+        }
+
+        return $users;
+    }
+
+    private function activityMetricsByUser(array $userIds, Request $request): array
+    {
+        if (! $userIds) {
+            return [];
+        }
+
+        $starts = $this->applyDateFilter(DB::table('call_logs'), $request, 'started_at')
+            ->whereIn('user_id', $userIds)
+            ->whereNotNull('started_at')
+            ->select('user_id', 'started_at')
+            ->orderBy('started_at')
+            ->get();
+
+        $firstCallSeconds = [];
+
+        foreach ($starts as $row) {
+            try {
+                $startedAt = \Carbon\Carbon::parse($row->started_at);
+            } catch (\Throwable $exception) {
+                continue;
+            }
+
+            $dateKey = $startedAt->toDateString();
+            $current = $firstCallSeconds[$row->user_id][$dateKey] ?? null;
+            $seconds = ($startedAt->hour * 3600) + ($startedAt->minute * 60) + $startedAt->second;
+
+            if ($current === null || $seconds < $current) {
+                $firstCallSeconds[$row->user_id][$dateKey] = $seconds;
+            }
+        }
+
+        $formRows = $this->applyDateFilter(DB::table('lead_dispositions'), $request, 'lead_dispositions.disposed_at')
+            ->leftJoin('call_logs', 'lead_dispositions.call_log_id', '=', 'call_logs.id')
+            ->whereIn('lead_dispositions.user_id', $userIds)
+            ->whereNotNull('lead_dispositions.disposed_at')
+            ->whereNotNull('call_logs.ended_at')
+            ->select('lead_dispositions.user_id', 'lead_dispositions.disposed_at', 'call_logs.ended_at')
+            ->get();
+
+        $formSeconds = [];
+
+        foreach ($formRows as $row) {
+            try {
+                $disposedAt = \Carbon\Carbon::parse($row->disposed_at);
+                $endedAt = \Carbon\Carbon::parse($row->ended_at);
+            } catch (\Throwable $exception) {
+                continue;
+            }
+
+            $seconds = $endedAt->diffInSeconds($disposedAt, false);
+
+            if ($seconds >= 0) {
+                $formSeconds[$row->user_id][] = $seconds;
+            }
+        }
+
+        return collect($userIds)->mapWithKeys(function ($userId) use ($firstCallSeconds, $formSeconds) {
+            $startValues = array_values($firstCallSeconds[$userId] ?? []);
+            $formValues = $formSeconds[$userId] ?? [];
+
+            return [
+                $userId => [
+                    'avg_start_calling_time' => $startValues ? $this->secondsToClock(array_sum($startValues) / count($startValues)) : null,
+                    'avg_form_filling_time_seconds' => $formValues ? array_sum($formValues) / count($formValues) : 0,
+                ],
+            ];
+        })->all();
+    }
+
+    private function formatUserReportExportRows($users, Request $request): array
+    {
+        $reportDate = $this->displayDate((string) $request->input('to', now()->toDateString()));
+
+        return $users->values()->map(function (User $user, int $index) use ($reportDate) {
+            return [
+                $index + 1,
+                $user->name ?: '--',
+                $user->reportingManager?->name ?: 'No Manager',
+                $user->phone_number ?: '--',
+                $reportDate,
+                (int) ($user->total_calls ?? 0),
+                (int) ($user->connected_calls ?? 0),
+                (int) ($user->unconnected_calls ?? 0),
+                (int) ($user->outgoing_calls ?? 0),
+                (int) ($user->outgoing_connected_calls ?? 0),
+                (int) ($user->outgoing_unanswered_calls ?? 0),
+                $this->secondsToClock($user->avg_outgoing_call_duration_seconds ?? 0),
+                (int) ($user->incoming_calls ?? 0),
+                (int) ($user->incoming_connected_calls ?? 0),
+                (int) ($user->incoming_unanswered_calls ?? 0),
+                $this->secondsToClock($user->avg_incoming_call_duration_seconds ?? 0),
+                (int) ($user->disposed_count ?? 0),
+                (int) ($user->disposed_connected_count ?? 0),
+                (int) ($user->disposed_not_connected_count ?? 0),
+                (int) ($user->in_progress_leads ?? 0),
+                (int) ($user->converted_leads ?? 0),
+                (int) ($user->lost_leads ?? 0),
+                (int) ($user->follow_ups_due_today ?? 0),
+                $user->avg_start_calling_time ?: '--',
+                $this->secondsToClock($user->avg_call_duration_seconds ?? 0),
+                $this->secondsToClock($user->avg_form_filling_time_seconds ?? 0),
+                $this->secondsToClock($user->total_call_duration_seconds ?? 0),
+                (int) ($user->total_breaks ?? 0),
+                $this->secondsToClock($user->total_break_duration_seconds ?? 0),
+                (int) ($user->whatsapp_sent ?? 0),
+                (int) ($user->emails_sent ?? 0),
+                (int) ($user->sms_sent ?? 0),
+            ];
+        })->all();
+    }
+
+    private function secondsToClock($value): string
+    {
+        $seconds = max(0, (int) round((float) $value));
+
+        return sprintf('%02d:%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60);
+    }
+
+    private function displayDate(string $value): string
+    {
+        try {
+            return \Carbon\Carbon::parse($value)->format('d M Y');
+        } catch (\Throwable $exception) {
+            return '--';
+        }
+    }
+
+    private function reportDateRangeLabel(Request $request): string
+    {
+        $from = (string) $request->input('from', now()->toDateString());
+        $to = (string) $request->input('to', $from);
+
+        return $this->displayDate($from) . ' - ' . $this->displayDate($to);
     }
 
     public function followUpReport(Request $request)
@@ -239,8 +588,36 @@ class ReportController extends Controller
 
     public function leadDispositionReport(Request $request)
     {
-        $rows = LeadDisposition::with(['lead:id,name,phone', 'user:id,name', 'disposition:id,name', 'toStage:id,name'])
+        $userIds = $this->idsFromRequest($request, 'user_ids');
+        $managerIds = $this->idsFromRequest($request, 'manager_ids');
+        $includeNoManager = in_array('none', (array) $request->input('manager_ids', []), true)
+            || str_contains((string) $request->input('manager_ids', ''), 'none');
+
+        $rows = LeadDisposition::with([
+                'lead:id,name,phone',
+                'user:id,name,phone_number,reporting_manager_id',
+                'user.reportingManager:id,name',
+                'campaign:id,name',
+                'disposition:id,name',
+                'toStage:id,name',
+                'tag:id,name',
+                'callLog:id,recording_url,duration_seconds',
+            ])
             ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
+            ->when($userIds, fn ($q) => $q->whereIn('user_id', $userIds))
+            ->when($managerIds || $includeNoManager, function ($query) use ($managerIds, $includeNoManager) {
+                $query->whereHas('user', function ($query) use ($managerIds, $includeNoManager) {
+                    $query->where(function ($query) use ($managerIds, $includeNoManager) {
+                        if ($managerIds) {
+                            $query->whereIn('reporting_manager_id', $managerIds);
+                        }
+
+                        if ($includeNoManager) {
+                            $query->orWhereNull('reporting_manager_id');
+                        }
+                    });
+                });
+            })
             ->when($request->filled('campaign_id'), fn ($q) => $q->where('campaign_id', $request->campaign_id))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('disposed_at', '>=', $request->from))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('disposed_at', '<=', $request->to))
@@ -248,6 +625,129 @@ class ReportController extends Controller
             ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return response()->json(['status' => true, 'data' => $rows]);
+    }
+
+    public function userStageReport(Request $request)
+    {
+        $pipelineId = $request->integer('pipeline_id') ?: Pipeline::active()->ordered()->value('id');
+
+        if (! $pipelineId) {
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'pipeline_id' => null,
+                    'stages' => [],
+                    'rows' => [],
+                ],
+            ]);
+        }
+
+        $userIds = $this->idsFromRequest($request, 'user_ids');
+        $campaignIds = $this->idsFromRequest($request, 'campaign_ids');
+        if ($request->filled('campaign_id') && is_numeric($request->campaign_id)) {
+            $campaignIds[] = (int) $request->campaign_id;
+            $campaignIds = array_values(array_unique($campaignIds));
+        }
+
+        $managerIds = $this->idsFromRequest($request, 'manager_ids');
+        $includeNoManager = in_array('none', (array) $request->input('manager_ids', []), true)
+            || str_contains((string) $request->input('manager_ids', ''), 'none');
+
+        $stages = LeadStage::query()
+            ->select('id', 'name', 'category', 'color', 'sort_order')
+            ->where('pipeline_id', $pipelineId)
+            ->active()
+            ->ordered()
+            ->get();
+
+        $users = User::query()
+            ->select('users.id', 'users.reporting_manager_id', 'users.name', 'users.phone_number')
+            ->with('reportingManager:id,name')
+            ->whereIn('users.role', ['agent', 'subadmin'])
+            ->when($userIds, fn ($query) => $query->whereIn('users.id', $userIds))
+            ->when($managerIds || $includeNoManager, function ($query) use ($managerIds, $includeNoManager) {
+                $query->where(function ($query) use ($managerIds, $includeNoManager) {
+                    if ($managerIds) {
+                        $query->whereIn('users.reporting_manager_id', $managerIds);
+                    }
+
+                    if ($includeNoManager) {
+                        $query->orWhereNull('users.reporting_manager_id');
+                    }
+                });
+            })
+            ->orderBy('users.name')
+            ->paginate(min(max($request->integer('per_page', 25), 1), 100));
+
+        $pageUserIds = $users->getCollection()->pluck('id')->all();
+        $stageIds = $stages->pluck('id')->all();
+        $closedWonStageIds = $stages->where('category', 'closed_won')->pluck('id')->all();
+
+        $totals = collect();
+        $stageCounts = collect();
+
+        if ($pageUserIds) {
+            $filteredLeads = DB::table('leads')
+                ->where('pipeline_id', $pipelineId)
+                ->whereIn('assigned_user_id', $pageUserIds)
+                ->when($campaignIds, fn ($query) => $query->whereIn('campaign_id', $campaignIds))
+                ->when($request->filled('from'), fn ($query) => $query->whereDate('created_at', '>=', $request->from))
+                ->when($request->filled('to'), fn ($query) => $query->whereDate('created_at', '<=', $request->to))
+                ->whereNull('deleted_at');
+
+            $totals = (clone $filteredLeads)
+                ->select('assigned_user_id')
+                ->selectRaw('COUNT(*) as total_assigned_leads')
+                ->when(
+                    $closedWonStageIds,
+                    fn ($query) => $query->selectRaw(
+                        'SUM(CASE WHEN stage_id IN (' . implode(',', array_fill(0, count($closedWonStageIds), '?')) . ') THEN 1 ELSE 0 END) as converted_leads',
+                        $closedWonStageIds
+                    ),
+                    fn ($query) => $query->selectRaw('0 as converted_leads')
+                )
+                ->groupBy('assigned_user_id')
+                ->get()
+                ->keyBy('assigned_user_id');
+
+            $stageCounts = (clone $filteredLeads)
+                ->whereIn('stage_id', $stageIds ?: [0])
+                ->select('assigned_user_id', 'stage_id')
+                ->selectRaw('COUNT(*) as total')
+                ->groupBy('assigned_user_id', 'stage_id')
+                ->get()
+                ->groupBy('assigned_user_id');
+        }
+
+        $rows = $users->getCollection()->map(function (User $user) use ($totals, $stageCounts, $stages, $request) {
+            $totalAssigned = (int) ($totals[$user->id]->total_assigned_leads ?? 0);
+            $converted = (int) ($totals[$user->id]->converted_leads ?? 0);
+            $countsByStage = ($stageCounts[$user->id] ?? collect())->keyBy('stage_id');
+
+            return [
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'reporting_manager' => $user->reportingManager?->name ?: 'No Manager',
+                'phone_number' => $user->phone_number,
+                'date' => $this->reportDateRangeLabel($request),
+                'conversion_percent' => $totalAssigned > 0 ? round(($converted / $totalAssigned) * 100, 2) : 0,
+                'total_assigned_leads' => $totalAssigned,
+                'stage_counts' => $stages->mapWithKeys(fn (LeadStage $stage) => [
+                    $stage->id => (int) ($countsByStage[$stage->id]->total ?? 0),
+                ]),
+            ];
+        });
+
+        $users->setCollection($rows);
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'pipeline_id' => $pipelineId,
+                'stages' => $stages,
+                'rows' => $users,
+            ],
+        ]);
     }
 
     public function loginReport(Request $request)
@@ -353,5 +853,17 @@ class ReportController extends Controller
         return $query
             ->when($request->filled('from'), fn ($query) => $query->whereDate($column, '>=', $request->from))
             ->when($request->filled('to'), fn ($query) => $query->whereDate($column, '<=', $request->to));
+    }
+
+    private function idsFromRequest(Request $request, string $key): array
+    {
+        $value = $request->input($key, []);
+        $items = is_array($value) ? $value : explode(',', (string) $value);
+
+        return collect($items)
+            ->filter(fn ($item) => is_numeric($item))
+            ->map(fn ($item) => (int) $item)
+            ->values()
+            ->all();
     }
 }

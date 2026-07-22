@@ -128,15 +128,16 @@
   }
 
   function contactPayloadFromModal(modal) {
-    const inputs = modal.querySelectorAll('.lead-input');
     const campaignId = modal.querySelector('[data-crm-campaign-select]')?.value
       || document.querySelector('.campaigns-body select')?.value;
 
     return {
       campaign_id: campaignId,
-      name: inputs[0]?.value || null,
-      phone: inputs[1]?.value || '',
-      email: inputs[2]?.value || null,
+      name: modal.querySelector('input[name="name"]')?.value || null,
+      phone: modal.querySelector('input[name="phone"]')?.value || '',
+      email: modal.querySelector('input[name="email"]')?.value || null,
+      state: modal.querySelector('[data-state-select]')?.value || null,
+      city: modal.querySelector('[data-city-select]')?.value || null,
       source: 'MANUAL',
       user_id: window.CallingCrmApi.currentUserId || null
     };
@@ -748,6 +749,37 @@
     const leadModal = document.querySelector('[data-lead-modal]');
     const submitButton = leadModal?.querySelector('.lead-submit-btn');
     const leadForm = leadModal?.querySelector('[data-add-lead-form]');
+    
+    // Setup state and city dropdowns for single lead modal
+    const leadStateSelect = leadModal?.querySelector('[data-state-select]');
+    const leadCitySelect = leadModal?.querySelector('[data-city-select]');
+    if (leadStateSelect && leadCitySelect) {
+        fetch('/data/cities.json')
+            .then(res => res.json())
+            .then(data => {
+                const map = {};
+                data.forEach(item => {
+                    if (!map[item.state]) map[item.state] = [];
+                    map[item.state].push(item.city);
+                });
+                const states = Object.keys(map).sort();
+                leadStateSelect.innerHTML = '<option value="">State</option>' + states.map(s => `<option value="${s}">${s}</option>`).join('');
+                
+                leadStateSelect.addEventListener('change', () => {
+                    const state = leadStateSelect.value;
+                    if (!state || !map[state]) {
+                        leadCitySelect.innerHTML = '<option value="">City</option>';
+                        leadCitySelect.disabled = true;
+                        return;
+                    }
+                    map[state].sort();
+                    leadCitySelect.innerHTML = '<option value="">City</option>' + map[state].map(c => `<option value="${c}">${c}</option>`).join('');
+                    leadCitySelect.disabled = false;
+                });
+            })
+            .catch(console.error);
+    }
+
     function submitLeadModal(event) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -2370,12 +2402,13 @@
         return '<tr data-crm-user-id="' + user.id + '" data-crm-user-role="' + escapeHtml(user.role || 'agent') + '"><td>' + (index + 1) + '</td>'
           + '<td>' + escapeHtml(user.name) + '</td><td>' + escapeHtml(user.phone_number || '') + '</td>'
           + '<td>' + escapeHtml(user.reporting_manager?.name || '') + '</td><td>' + escapeHtml(user.email || '') + '</td>'
+          + '<td data-state="' + escapeHtml(user.location?.state || '') + '" data-city="' + escapeHtml(user.location?.name || '') + '">' + escapeHtml((user.location?.state ? user.location.state + ', ' : '') + (user.location?.name || '-')) + '</td>'
           + '<td>' + escapeHtml(roleLabel(user.role)) + '</td><td>' + escapeHtml(formatSettingsDate(user.expires_at)) + '</td>'
           + '<td><span class="status-pill ' + escapeHtml(user.crm_status || 'active') + '">' + escapeHtml((user.crm_status || 'active').replace(/^\w/, function (letter) { return letter.toUpperCase(); })) + '</span></td>'
           + '<td><button type="button" class="dots-btn" aria-label="User actions" data-user-actions-toggle data-user-name="' + escapeHtml(user.name) + '"><i class="fa-solid fa-ellipsis-vertical"></i></button></td></tr>';
       }).join('');
       refreshSettingsDataTable('usersTable', '#settingsUsersTable', {
-        columnDefs: [{ orderable: false, targets: [8] }]
+        columnDefs: [{ orderable: false, targets: [9] }]
       });
       if (usersSearch && settingsState.usersTable) {
         settingsState.usersTable.search(usersSearch.value || '').draw();
@@ -2395,7 +2428,9 @@
         phone_number: row.querySelector('input[name="number[]"]')?.value.trim(),
         role: row.querySelector('select[name="role[]"]')?.value || 'agent',
         email: row.querySelector('input[name="email[]"]')?.value.trim() || null,
-        employee_id: row.querySelector('input[name="employee_id[]"]')?.value.trim() || null
+        employee_id: row.querySelector('input[name="employee_id[]"]')?.value.trim() || null,
+        state: row.querySelector('select[name="state[]"]')?.value || null,
+        city: row.querySelector('select[name="city[]"]')?.value || null
       };
       const password = row.querySelector('input[name="password[]"]')?.value;
       if (includePassword || password) payload.password = password;

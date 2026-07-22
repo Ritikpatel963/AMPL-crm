@@ -70,8 +70,8 @@ class SettingsController extends Controller
     public function users(Request $request)
     {
         $users = User::query()
-            ->select(['id', 'reporting_manager_id', 'name', 'phone_number', 'email', 'role', 'employee_id', 'crm_status', 'lead_assignment_enabled', 'expires_at', 'created_at'])
-            ->with('reportingManager:id,name')
+            ->select(['id', 'reporting_manager_id', 'location_id', 'name', 'phone_number', 'email', 'role', 'employee_id', 'crm_status', 'lead_assignment_enabled', 'expires_at', 'created_at'])
+            ->with(['reportingManager:id,name', 'location:id,name'])
             ->whereIn('role', ['agent', 'subadmin'])
             ->when($request->filled('search'), function ($query) use ($request) {
                 $query->where(function ($query) use ($request) {
@@ -98,6 +98,8 @@ class SettingsController extends Controller
             'users.*.role' => ['required', Rule::in(['agent', 'subadmin'])],
             'users.*.employee_id' => ['nullable', 'string', 'max:80', 'distinct'],
             'users.*.reporting_manager_id' => ['nullable', 'exists:users,id'],
+            'users.*.state' => ['nullable', 'string', 'max:120'],
+            'users.*.city' => ['nullable', 'string', 'max:120'],
             'users.*.expires_at' => ['nullable', 'date'],
         ]);
 
@@ -107,6 +109,15 @@ class SettingsController extends Controller
                 $userData['crm_status'] = 'active';
                 $userData['lead_assignment_enabled'] = true;
                 $userData['approval_status'] = $userData['approval_status'] ?? 'approved';
+
+                if (!empty($userData['state']) && !empty($userData['city'])) {
+                    $location = \App\Models\Location::firstOrCreate([
+                        'state' => $userData['state'],
+                        'name' => $userData['city']
+                    ], ['is_active' => true]);
+                    $userData['location_id'] = $location->id;
+                }
+                unset($userData['state'], $userData['city']);
 
                 return User::create($userData);
             });
@@ -132,12 +143,23 @@ class SettingsController extends Controller
             'role' => ['required', Rule::in(['agent', 'subadmin'])],
             'employee_id' => ['nullable', 'string', 'max:80'],
             'reporting_manager_id' => ['nullable', 'exists:users,id'],
+            'state' => ['nullable', 'string', 'max:120'],
+            'city' => ['nullable', 'string', 'max:120'],
             'expires_at' => ['nullable', 'date'],
         ]);
 
         if (blank($data['password'] ?? null)) {
             unset($data['password']);
         }
+
+        if (!empty($data['state']) && !empty($data['city'])) {
+            $location = \App\Models\Location::firstOrCreate([
+                'state' => $data['state'],
+                'name' => $data['city']
+            ], ['is_active' => true]);
+            $data['location_id'] = $location->id;
+        }
+        unset($data['state'], $data['city']);
 
         $data['email'] = $this->crmUserEmail($data['email'] ?? null, $data['phone_number']);
         $user->update($data);

@@ -138,28 +138,23 @@
             </div>
         @enderror
 
-        @php
-            $otpPhone = session('admin_login_phone', old('phone'));
-        @endphp
-
-        <form method="POST" action="{{ route('admin_panel.admin.send.otp') }}">
+        <form method="POST" action="{{ route('admin_panel.admin.login.submit') }}">
             @csrf
             <label for="phone">Phone Number</label>
-            <input type="tel" name="phone" id="phone" value="{{ $otpPhone }}" placeholder="Enter phone number" required>
+            <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" placeholder="Enter phone number" required>
 
-            <button type="submit" class="admin-login-button">Send OTP</button>
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" placeholder="Enter password" required>
+
+            <button type="submit" class="admin-login-button">Login</button>
         </form>
 
-        @if($otpPhone)
-            <form method="POST" action="{{ route('admin_panel.admin.login.submit') }}" style="margin-top:20px;">
-                @csrf
-                <input type="hidden" name="phone" value="{{ $otpPhone }}">
-
-                <label for="otp">OTP</label>
-                <input type="text" name="otp" id="otp" inputmode="numeric" maxlength="6" placeholder="Enter OTP" required>
-
-                <button type="submit" class="admin-login-button">Login</button>
-            </form>
+        @if(\App\Models\Setting::where('key', 'admin_google_login_enabled')->value('value') === '1')
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ route('admin_panel.admin.google.redirect') }}" class="admin-login-button" style="display: block; background-color: #db4437; text-decoration: none;">
+                Login with Google
+            </a>
+        </div>
         @endif
     </div>
 </body>

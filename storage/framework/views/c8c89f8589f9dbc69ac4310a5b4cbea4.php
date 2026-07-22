@@ -21,6 +21,7 @@
 
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     <?php echo $__env->yieldPushContent('styles'); ?>
+    <link rel="stylesheet" href="<?php echo e(asset('css/admin-datatables.css')); ?>?v=1.2">
 </head>
 
 <body class="<?php echo e(request()->routeIs('admin_panel.admin.callingcrm.*') ? 'calling-crm-page' : ''); ?>">

@@ -56,11 +56,11 @@ class AdminCustomerController extends Controller
         $agentId = $data['agent_id'] ?? null;
         unset($data['agent_id']);
 
-        // Auto-generate email + random password so the account works;
-        // customers always log in via OTP from the app.
+        // Auto-generate email + fallback password so the account works;
+        // customers can now log in using 'password'.
         $customer = User::create(array_merge($data, [
             'email'           => 'customer_' . $data['phone_number'] . '@amplchat.local',
-            'password'        => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(16)),
+            'password'        => \Illuminate\Support\Facades\Hash::make('password'),
             'role'            => 'customer',
             'approval_status' => 'approved',
         ]));

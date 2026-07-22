@@ -60,6 +60,63 @@
             let priorityDragGhost = null;
             let activePropertyRow = null;
 
+            const stateCityMap = {};
+            let isLocationDataLoaded = false;
+
+            fetch('/data/cities.json')
+                .then(res => res.json())
+                .then(data => {
+                    data.forEach(item => {
+                        if (!stateCityMap[item.state]) stateCityMap[item.state] = [];
+                        stateCityMap[item.state].push(item.city);
+                    });
+                    for (const state in stateCityMap) {
+                        stateCityMap[state].sort();
+                    }
+                    isLocationDataLoaded = true;
+                    populateStateDropdowns();
+                })
+                .catch(console.error);
+
+            const populateStateDropdowns = (row = null) => {
+                if (!isLocationDataLoaded) return;
+                const rows = row ? [row] : (userRows?.querySelectorAll('[data-user-form-row]') || []);
+                const states = Object.keys(stateCityMap).sort();
+                
+                rows.forEach(r => {
+                    const stateSelect = r.querySelector('[data-state-select]');
+                    if (!stateSelect || stateSelect.options.length > 1) return;
+                    
+                    const currentValue = stateSelect.value;
+                    stateSelect.innerHTML = '<option value="">State</option>' + states.map(s => `<option value="${s}">${s}</option>`).join('');
+                    if (currentValue) stateSelect.value = currentValue;
+                });
+            };
+
+            const populateCityDropdown = (stateSelect, targetCity = null) => {
+                const row = stateSelect.closest('[data-user-form-row]');
+                const citySelect = row?.querySelector('[data-city-select]');
+                if (!citySelect) return;
+
+                const state = stateSelect.value;
+                if (!state || !stateCityMap[state]) {
+                    citySelect.innerHTML = '<option value="">City</option>';
+                    citySelect.disabled = true;
+                    return;
+                }
+
+                citySelect.innerHTML = '<option value="">City</option>' + stateCityMap[state].map(c => `<option value="${c}">${c}</option>`).join('');
+                citySelect.disabled = false;
+                if (targetCity) citySelect.value = targetCity;
+            };
+
+            if (userRows) {
+                userRows.addEventListener('change', event => {
+                    const stateSelect = event.target.closest('[data-state-select]');
+                    if (stateSelect) populateCityDropdown(stateSelect);
+                });
+            }
+
             if (window.callingCrmRequest) {
                 const scrollStep = () => Math.max(220, Math.round(tabsTrack.clientWidth * .72));
                 const updateTabArrows = () => {
@@ -98,6 +155,11 @@
                         input.required = input.name === 'password[]' || input.hasAttribute('required');
                     });
                     row?.querySelectorAll('select').forEach(select => select.value = '');
+                    const citySelect = row?.querySelector('[data-city-select]');
+                    if (citySelect) {
+                        citySelect.innerHTML = '<option value="">City</option>';
+                        citySelect.disabled = true;
+                    }
                     const password = row?.querySelector('input[name="password[]"]');
                     const icon = row?.querySelector('[data-password-toggle] i');
                     if (password) password.type = 'password';
@@ -111,6 +173,15 @@
                     formRow.querySelector('input[name="name[]"]').value = row.cells[1]?.textContent.trim() || '';
                     formRow.querySelector('input[name="number[]"]').value = row.cells[2]?.textContent.trim() || '';
                     formRow.querySelector('input[name="email[]"]').value = row.cells[4]?.textContent.trim() || '';
+                    
+                    const stateName = row.cells[5]?.dataset.state || '';
+                    const cityName = row.cells[5]?.dataset.city || '';
+                    const stateSelect = formRow.querySelector('[data-state-select]');
+                    if (stateSelect) {
+                        stateSelect.value = stateName;
+                        populateCityDropdown(stateSelect, cityName);
+                    }
+                    
                     formRow.querySelector('select[name="role[]"]').value = row.dataset.crmUserRole || 'agent';
                     const password = formRow.querySelector('input[name="password[]"]');
                     if (password) {
@@ -197,6 +268,7 @@
                     const row = source.cloneNode(true);
                     resetUserRow(row);
                     userRows.append(row);
+                    populateStateDropdowns(row);
                 });
                 userRows?.addEventListener('click', event => {
                     const passwordToggle = event.target.closest('[data-password-toggle]');
@@ -371,6 +443,11 @@
             const resetUserRow = row => {
                 row.querySelectorAll('input').forEach(input => input.value = '');
                 row.querySelectorAll('select').forEach(select => select.value = '');
+                const citySelect = row.querySelector('[data-city-select]');
+                if (citySelect) {
+                    citySelect.innerHTML = '<option value="">City</option>';
+                    citySelect.disabled = true;
+                }
                 const password = row.querySelector('input[name="password[]"]');
                 const icon = row.querySelector('[data-password-toggle] i');
                 if (password) password.type = 'password';
@@ -383,6 +460,7 @@
                 const row = source.cloneNode(true);
                 resetUserRow(row);
                 userRows.append(row);
+                populateStateDropdowns(row);
             };
 
             const fillUserFormForEdit = row => {
@@ -392,8 +470,17 @@
                 resetUserRow(formRow);
                 formRow.querySelector('input[name="name[]"]').value = row.cells[1].textContent.trim();
                 formRow.querySelector('input[name="number[]"]').value = row.cells[2].textContent.trim();
-                formRow.querySelector('select[name="role[]"]').value = row.cells[5].textContent.trim();
                 formRow.querySelector('input[name="email[]"]').value = row.cells[4].textContent.trim();
+                
+                const stateName = row.cells[5]?.dataset?.state || '';
+                const cityName = row.cells[5]?.dataset?.city || '';
+                const stateSelect = formRow.querySelector('[data-state-select]');
+                if (stateSelect) {
+                    stateSelect.value = stateName;
+                    populateCityDropdown(stateSelect, cityName);
+                }
+                
+                formRow.querySelector('select[name="role[]"]').value = row.cells[6].textContent.trim();
                 formRow.querySelector('input[name="password[]"]').required = false;
             };
 
@@ -438,15 +525,25 @@
 
             const appendUserRow = formRow => {
                 if (!usersTableBody) return;
+                const stateSelect = formRow.querySelector('[data-state-select]');
+                const citySelect = formRow.querySelector('[data-city-select]');
                 const values = {
                     name: formRow.querySelector('input[name="name[]"]').value.trim(),
                     number: formRow.querySelector('input[name="number[]"]').value.trim(),
                     email: formRow.querySelector('input[name="email[]"]').value.trim(),
+                    state: stateSelect ? stateSelect.value : '',
+                    city: citySelect ? citySelect.value : '',
                     role: formRow.querySelector('select[name="role[]"]').value.trim(),
                 };
+                const locationStr = values.state ? `${values.state}, ${values.city}` : '-';
                 const row = usersTableBody.insertRow();
-                ['', values.name, values.number, '', values.email, values.role, '10-10-2026'].forEach(value => {
-                    row.insertCell().textContent = value;
+                ['', values.name, values.number, '', values.email, locationStr, values.role, '10-10-2026'].forEach((value, idx) => {
+                    const cell = row.insertCell();
+                    cell.textContent = value;
+                    if (idx === 5) {
+                        cell.dataset.state = values.state;
+                        cell.dataset.city = values.city;
+                    }
                 });
                 const statusCell = row.insertCell();
                 const status = document.createElement('span');
@@ -462,7 +559,12 @@
                 editingUserRow.cells[1].textContent = name;
                 editingUserRow.cells[2].textContent = formRow.querySelector('input[name="number[]"]').value.trim();
                 editingUserRow.cells[4].textContent = formRow.querySelector('input[name="email[]"]').value.trim();
-                editingUserRow.cells[5].textContent = formRow.querySelector('select[name="role[]"]').value.trim();
+                const stateSelect = formRow.querySelector('[data-state-select]');
+                const citySelect = formRow.querySelector('[data-city-select]');
+                editingUserRow.cells[5].dataset.state = stateSelect ? stateSelect.value : '';
+                editingUserRow.cells[5].dataset.city = citySelect ? citySelect.value : '';
+                editingUserRow.cells[5].textContent = stateSelect?.value ? `${stateSelect.value}, ${citySelect?.value}` : '-';
+                editingUserRow.cells[6].textContent = formRow.querySelector('select[name="role[]"]').value.trim();
                 const actionButton = editingUserRow.querySelector('[data-user-actions-toggle]');
                 if (actionButton) actionButton.dataset.userName = name;
             };

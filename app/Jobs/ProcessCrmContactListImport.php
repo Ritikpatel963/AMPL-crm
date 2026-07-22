@@ -75,6 +75,16 @@ class ProcessCrmContactListImport implements ShouldQueue
                         $name = $this->resolveMapped($row, $mapping, 'name', 0);
                         $email = $this->resolveMapped($row, $mapping, 'email', 2);
                         
+                        $locationStr = $this->resolveMapped($row, $mapping, 'location', -1);
+                        $locationId = null;
+                        if (!empty($locationStr)) {
+                            $location = \App\Models\Location::firstOrCreate(
+                                ['name' => $locationStr],
+                                ['is_active' => true]
+                            );
+                            $locationId = $location->id;
+                        }
+
                         $metadata = [];
                         foreach ($row as $header => $val) {
                             $mappedKey = $mapping[$header] ?? null;
@@ -90,6 +100,7 @@ class ProcessCrmContactListImport implements ShouldQueue
                             'phone' => $phone,
                             'name' => $name,
                             'email' => $email,
+                            'location_id' => $locationId,
                             'metadata' => $metadata,
                         ];
                     } catch (\Exception $e) {
@@ -145,6 +156,7 @@ class ProcessCrmContactListImport implements ShouldQueue
                                 'name' => $data['name'] ?: null,
                                 'phone' => $phone,
                                 'email' => $data['email'] ?: null,
+                                'location_id' => $data['location_id'] ?: null,
                                 'status' => 'uncontacted',
                                 'metadata' => is_array($data['metadata']) ? json_encode($data['metadata']) : json_encode([]),
                                 'created_at' => now(),

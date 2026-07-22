@@ -33,6 +33,7 @@ class Lead extends Model
         'total_disposition_count',
         'confidential_remark',
         'metadata',
+        'location_id',
     ];
 
     protected function casts(): array
@@ -60,6 +61,11 @@ class Lead extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function assignedUser()

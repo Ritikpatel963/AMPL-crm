@@ -13,10 +13,13 @@ class AdminUserController extends Controller
     {
         $users = User::query()
             ->whereIn('role', ['subadmin', 'agent'])
+            ->with('location')
             ->latest()
             ->get();
 
-        return view('admin_panel.users.index', compact('users'));
+        $locations = \App\Models\Location::where('is_active', true)->get();
+
+        return view('admin_panel.users.index', compact('users', 'locations'));
     }
 
     public function destroy(Request $request)
@@ -39,6 +42,7 @@ class AdminUserController extends Controller
             'phone_number' => ['required', 'string', 'max:30', 'unique:users,phone_number'],
             'password' => ['required', Password::min(4)],
             'role' => ['required', Rule::in(['subadmin', 'agent'])],
+            'location_id' => ['nullable', 'exists:locations,id'],
         ]);
 
         $data['crm_status'] = 'active';
@@ -64,6 +68,7 @@ class AdminUserController extends Controller
             'phone_number' => ['required', 'string', 'max:30', Rule::unique('users', 'phone_number')->ignore($user)],
             'password' => ['nullable', Password::min(4)],
             'role' => ['required', Rule::in(['subadmin', 'agent'])],
+            'location_id' => ['nullable', 'exists:locations,id'],
         ]);
 
         if (blank($data['password'] ?? null)) {

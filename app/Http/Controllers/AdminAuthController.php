@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Setting;
 use App\Models\VendorOtp;
 use App\Services\WatiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Laravel\Socialite\Facades\Socialite;
 
 
 class AdminAuthController extends Controller
@@ -83,7 +85,7 @@ class AdminAuthController extends Controller
     {
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:20'],
-            'otp' => ['required', 'string', 'size:6'],
+            'password' => ['required', 'string'],
         ]);
 
         $phone = $this->normalizePhone($validated['phone']);
@@ -97,23 +99,10 @@ class AdminAuthController extends Controller
             return back()->withErrors(['phone' => 'This phone number is not registered as an admin.'])->withInput();
         }
 
-        $otpRecord = VendorOtp::where('phone_number', $phone)
-            ->where('is_verified', false)
-            ->latest()
-            ->first();
-
-        if (!$otpRecord || !Hash::check($validated['otp'], $otpRecord->otp)) {
-            return back()->withErrors(['otp' => 'Invalid OTP. Please check and try again.'])->withInput();
+        if (!Auth::guard('admin')->attempt(['phone' => $phone, 'password' => $validated['password']], true)) {
+            return back()->withErrors(['password' => 'Invalid password. Please check and try again.'])->withInput();
         }
 
-        if (now()->gt($otpRecord->expires_at)) {
-            return back()->withErrors(['otp' => 'OTP has expired. Please request a new one.'])->withInput();
-        }
-
-        $otpRecord->update(['is_verified' => true]);
-        session()->forget('admin_login_phone');
-
-        Auth::guard('admin')->login($admin, true);
         $request->session()->regenerate();
 
         return redirect()->intended(route('admin_panel.admin.index'));
@@ -123,14 +112,58 @@ class AdminAuthController extends Controller
     {
         return view('admin_panel.index');
     }
-
-    public function logout(Request $request)
+    public function logout(Request $request)
     {
         Auth::guard('admin')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect()->route('admin_panel.admin.login');
+    }
+    public function settings()
+    {
+        $googleLoginEnabled = Setting::where('key', 'admin_google_login_enabled')->value('value') === '1';
+        return view('admin_panel.admin.settings', compact('googleLoginEnabled'));
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $enabled = $request->has('google_login_enabled') ? '1' : '0';
+        Setting::updateOrCreate(
+            ['key' => 'admin_google_login_enabled'],
+            ['value' => $enabled]
+        );
+        return back()->with('success', 'Settings updated successfully.');
+    }
+
+    public function redirectToGoogle()
+    {
+        $enabled = Setting::where('key', 'admin_google_login_enabled')->value('value') === '1';
+        abort_unless($enabled, 404);
+        return Socialite::driver('google')->redirect();
+    }
+
+    public function handleGoogleCallback()
+    {
+        $enabled = Setting::where('key', 'admin_google_login_enabled')->value('value') === '1';
+        abort_unless($enabled, 404);
+
+        try {
+            $googleUser = Socialite::driver('google')->user();
+        } catch (\Exception $e) {
+            return redirect()->route('admin_panel.admin.login')->with('error', 'Google login failed.');
+        }
+
+        $admin = Admin::where('email', $googleUser->email)->first();
+
+        if (!$admin) {
+            return redirect()->route('admin_panel.admin.login')->with('error', 'No admin found with this email.');
+        }
+
+        Auth::guard('admin')->login($admin);
+        session()->regenerate();
+        
+        return redirect()->intended(route('admin_panel.admin.index'));
     }
     public function editProfile()
     {
@@ -180,6 +213,7 @@ class AdminAuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:20'],
+            'password' => ['required', 'string', 'min:6'],
         ]);
 
         $phone = $this->normalizePhone($validated['phone']);
@@ -195,7 +229,7 @@ class AdminAuthController extends Controller
             'name' => $validated['name'],
             'phone' => $phone,
             'email' => $phone . '@admin.local',
-            'password' => Hash::make(Str::random(32)),
+            'password' => Hash::make($validated['password']),
             'is_main_admin' => false,
         ]);
 
@@ -207,6 +241,7 @@ class AdminAuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:20'],
+            'password' => ['nullable', 'string', 'min:6'],
         ]);
 
         $phone = $this->normalizePhone($validated['phone']);
@@ -223,6 +258,10 @@ class AdminAuthController extends Controller
         if (!$admin->isMainAdmin()) {
             $admin->phone = $phone;
             $admin->email = $admin->phone . '@admin.local';
+        }
+
+        if (!empty($validated['password'])) {
+            $admin->password = Hash::make($validated['password']);
         }
 
         $admin->save();

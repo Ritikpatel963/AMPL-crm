@@ -90,6 +90,7 @@
                     @csrf
                     <input type="text" name="name" class="form-control mb-3" placeholder="Full Name" required>
                     <input type="tel" name="phone" class="form-control mb-3" placeholder="Phone Number" required>
+                    <input type="password" name="password" class="form-control mb-3" placeholder="Password" required minlength="6">
 
                     <div class="text-end">
                         <button type="submit" class="btn btn-primary">Create Admin</button>
@@ -113,7 +114,8 @@
                 <div class="modal-body">
                     <input type="text" id="edit_admin_name" name="name" class="form-control mb-3" placeholder="Full Name" required>
                     <input type="tel" id="edit_admin_phone" name="phone" class="form-control mb-2" placeholder="Phone Number" required>
-                    <small id="main_admin_note" class="text-muted d-none">Main admin phone number cannot be changed.</small>
+                    <small id="main_admin_note" class="text-muted d-none mb-3">Main admin phone number cannot be changed.</small>
+                    <input type="password" name="password" class="form-control mb-3 mt-3" placeholder="New Password (optional)" minlength="6">
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-success">Update Admin</button>

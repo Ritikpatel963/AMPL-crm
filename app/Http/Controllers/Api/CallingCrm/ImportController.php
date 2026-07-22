@@ -189,6 +189,7 @@ class ImportController extends Controller
             'state' => ['state', 'province', 'region'],
             'pincode' => ['pincode', 'zip', 'zipcode', 'zip_code', 'postal_code', 'postalcode', 'pin'],
             'gst' => ['gst', 'gstin', 'gst_number', 'gst_no', 'tax_id'],
+            'location' => ['location', 'branch', 'area', 'zone', 'region'],
         ];
 
         $mapping = [];

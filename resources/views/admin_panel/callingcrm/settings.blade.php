@@ -91,6 +91,7 @@
                                     <th>Mobile Number</th>
                                     <th>Reporting To</th>
                                     <th>Email</th>
+                                    <th>Location</th>
                                     <th>Role</th>
                                     <th>Expiry Date</th>
                                     <th>Status</th>
@@ -105,6 +106,7 @@
                                         <td><span class="skeleton-loader" style="width: 90px; height: 16px;"></span></td>
                                         <td><span class="skeleton-loader" style="width: 100px; height: 16px;"></span></td>
                                         <td><span class="skeleton-loader" style="width: 140px; height: 16px;"></span></td>
+                                        <td><span class="skeleton-loader" style="width: 80px; height: 16px;"></span></td>
                                         <td><span class="skeleton-loader" style="width: 70px; height: 16px;"></span></td>
                                         <td><span class="skeleton-loader" style="width: 80px; height: 16px;"></span></td>
                                         <td><span class="skeleton-loader" style="width: 60px; height: 20px; border-radius: 12px;"></span></td>
@@ -644,6 +646,12 @@
                             <option value="">Role *</option>
                             <option value="subadmin">Admin / Team Lead</option>
                             <option value="agent">Executive</option>
+                        </select>
+                        <select class="field-select" name="state[]" data-state-select>
+                            <option value="">State</option>
+                        </select>
+                        <select class="field-select" name="city[]" data-city-select disabled>
+                            <option value="">City</option>
                         </select>
                         <input class="field-input" name="email[]" type="email" placeholder="Email">
                         <input class="field-input" name="employee_id[]" type="text" placeholder="Employee Id">

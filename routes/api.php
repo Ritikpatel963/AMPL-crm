@@ -29,7 +29,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:6,1')->group(function () {
     Route::post('login/send-otp', [AuthController::class, 'sendLoginOtp']);
     Route::post('login/verify', [AuthController::class, 'login']);
+    Route::post('agent/login/send-otp', [AuthController::class, 'sendAgentLoginOtp']);
+    Route::post('agent/login/verify', [AuthController::class, 'verifyAgentLoginOtp']);
     Route::post('agent/login', [AuthController::class, 'agentLogin']);
+    Route::post('login/google', [AuthController::class, 'googleLogin']);
 });
 
 // Route::post('/vendor/register', [VendorAuthController::class, 'register']);
@@ -197,8 +200,11 @@ Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1'])->group(funct
 
         // Reports
         Route::get('/reports/catalog', [CallingCrmReportController::class, 'catalog']);
+        Route::get('/reports/user-call/export', [CallingCrmReportController::class, 'exportUserCallReport']);
         Route::get('/reports/user-call', [CallingCrmReportController::class, 'userCallReport']);
+        Route::get('/reports/user-activity', [CallingCrmReportController::class, 'userActivityReport']);
         Route::get('/reports/lead-disposition', [CallingCrmReportController::class, 'leadDispositionReport']);
+        Route::get('/reports/user-stage', [CallingCrmReportController::class, 'userStageReport']);
         Route::get('/reports/follow-ups', [CallingCrmReportController::class, 'followUpReport']);
         Route::get('/reports/campaign', [CallingCrmReportController::class, 'campaignReport']);
         Route::get('/reports/login', [CallingCrmReportController::class, 'loginReport']);

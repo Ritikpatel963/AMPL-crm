@@ -22,14 +22,22 @@ class LeadAssignmentService
             return null;
         }
 
-        $userId = match ($campaign->distribution) {
-            'equal', 'auto_assign' => $this->nextEqualAgentId($campaign),
-            'conditional' => $this->conditionalAgentId($campaign, $lead)
+        $userId = null;
+
+        if ($campaign->distribution === 'conditional') {
+            $userId = $this->conditionalAgentId($campaign, $lead)
                 ?? $this->conditionalFallbackAgentId($campaign)
-                ?? $this->nextEqualAgentId($campaign),
-            'on_demand' => $forceOnDemand ? $this->nextEqualAgentId($campaign) : null,
-            default => null,
-        };
+                ?? $this->nextEqualAgentId($campaign);
+        } elseif ($campaign->distribution === 'on_demand') {
+            $userId = $forceOnDemand ? $this->nextEqualAgentId($campaign) : null;
+        } else {
+            if ($lead->location_id) {
+                $userId = $this->locationBasedAgentId($campaign, $lead->location_id);
+            }
+            if (!$userId) {
+                $userId = $this->nextEqualAgentId($campaign);
+            }
+        }
 
         if (!$userId) {
             return null;
@@ -105,6 +113,32 @@ class LeadAssignmentService
                 'assigned_leads_count' => (int) ($counts[$user->id] ?? 0),
             ]);
         });
+    }
+
+    private function locationBasedAgentId(Campaign $campaign, int $locationId): ?int
+    {
+        $agentIds = $this->campaignAgentIds($campaign);
+        if ($agentIds->isEmpty()) {
+            return null;
+        }
+
+        $locationAgentIds = User::whereIn('id', $agentIds)
+            ->where('location_id', $locationId)
+            ->pluck('id');
+
+        if ($locationAgentIds->isEmpty()) {
+            return null;
+        }
+
+        $counts = Lead::where('campaign_id', $campaign->id)
+            ->whereIn('assigned_user_id', $locationAgentIds)
+            ->select('assigned_user_id', DB::raw('count(*) as aggregate'))
+            ->groupBy('assigned_user_id')
+            ->pluck('aggregate', 'assigned_user_id');
+
+        return $locationAgentIds
+            ->sortBy(fn (int $agentId) => (int) ($counts[$agentId] ?? 0))
+            ->first();
     }
 
     private function nextEqualAgentId(Campaign $campaign): ?int

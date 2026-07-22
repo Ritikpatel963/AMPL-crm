@@ -356,6 +356,56 @@ class CallingCrmAgentLeadCallTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_agent_can_fetch_lead_disposition_report_with_call_log(): void
+    {
+        $agent = User::factory()->create(['role' => 'agent']);
+        $campaign = $this->campaignForAgents([$agent->id]);
+
+        $lead = Lead::create([
+            'campaign_id' => $campaign->id,
+            'pipeline_id' => $campaign->pipeline_id,
+            'assigned_user_id' => $agent->id,
+            'name' => 'Report Customer',
+            'phone' => '9000000017',
+            'source' => 'MANUAL',
+        ]);
+
+        $call = CallLog::create([
+            'lead_id' => $lead->id,
+            'campaign_id' => $campaign->id,
+            'user_id' => $agent->id,
+            'status' => 'connected',
+            'direction' => 'outgoing',
+            'phone_number' => $lead->phone,
+            'duration_seconds' => 120,
+            'recording_url' => 'https://recordings.example.test/call-report.mp3',
+            'called_at' => now(),
+            'started_at' => now(),
+        ]);
+
+        $disposition = \App\Models\Disposition::create([
+            'pipeline_id' => $campaign->pipeline_id,
+            'name' => 'Interested',
+            'type' => 'in_progress',
+        ]);
+
+        \App\Models\LeadDisposition::create([
+            'lead_id' => $lead->id,
+            'call_log_id' => $call->id,
+            'user_id' => $agent->id,
+            'campaign_id' => $campaign->id,
+            'disposition_id' => $disposition->id,
+            'call_status' => 'connected',
+            'disposed_at' => now(),
+        ]);
+
+        Sanctum::actingAs($agent);
+
+        $this->getJson('/api/calling-crm/reports/lead-disposition')
+            ->assertOk()
+            ->assertJsonPath('data.data.0.call_log.recording_url', 'https://recordings.example.test/call-report.mp3');
+    }
+
     private function campaignForAgents(array $agentIds): Campaign
     {
         $pipeline = Pipeline::create(['name' => 'Sales Pipeline']);

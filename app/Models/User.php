@@ -35,6 +35,7 @@ class User extends Authenticatable
         'lead_assignment_enabled',
         'expires_at',
         'last_seen_at',
+        'location_id',
     ];
 
     /**
@@ -96,6 +97,11 @@ class User extends Authenticatable
     public function reportingManager()
     {
         return $this->belongsTo(User::class, 'reporting_manager_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function reportees()

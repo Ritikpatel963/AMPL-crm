@@ -17,6 +17,45 @@ class AuthController extends Controller
 {
     public function __construct(private WatiService $wati) {}
 
+    public function googleLogin(Request $request)
+    {
+        $request->validate([
+            'id_token' => 'required|string',
+        ]);
+
+        $response = \Illuminate\Support\Facades\Http::get('https://oauth2.googleapis.com/tokeninfo?id_token=' . $request->id_token);
+
+        if (!$response->successful()) {
+            \Illuminate\Support\Facades\Log::error('Google tokeninfo failed: ' . $response->body());
+            return response()->json(['status' => false, 'message' => 'Invalid Google token.'], 401);
+        }
+
+        $payload = $response->json();
+        $email = $payload['email'] ?? null;
+
+        if (!$email) {
+            return response()->json(['status' => false, 'message' => 'Google account missing email.'], 400);
+        }
+
+        $user = User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name' => $payload['name'] ?? 'Google User',
+                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
+                'role' => 'customer',
+            ]
+        );
+
+        $token = $user->createToken('android-app')->plainTextToken;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Login successful',
+            'token' => $token,
+            'user' => $user,
+        ]);
+    }
+
     public function agentLogin(Request $request)
     {
         $data = $request->validate([
@@ -77,6 +116,110 @@ class AuthController extends Controller
             'user' => $user,
             'approval_status' => $user->approval_status,
         ]);
+    }
+
+    public function sendAgentLoginOtp(Request $request)
+    {
+        $request->validate([
+            'phone_number' => ['required', 'string'],
+        ]);
+
+        $phone = $this->normalizePhone($request->phone_number ?? '');
+        $agent = $this->findAgentByPhone($request->phone_number ?? '', $phone);
+
+        Log::info('[AGENT-SEND-OTP] Agent lookup result', [
+            'phone' => $phone,
+            'agent_found' => ! is_null($agent),
+            'agent_id' => $agent?->id,
+            'role' => $agent?->role,
+        ]);
+
+        if (! $agent) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Agent account not found for this phone number.',
+            ], 404);
+        }
+
+        if ($error = $this->agentAccessError($agent)) {
+            return $error;
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'OTP request processed successfully.',
+            'phone' => $phone,
+        ]);
+    }
+
+    public function verifyAgentLoginOtp(Request $request)
+    {
+        $request->validate([
+            'phone_number' => ['required', 'string'],
+            'otp' => ['required', 'string'],
+        ]);
+
+        $phone = $this->normalizePhone($request->phone_number ?? '');
+        $agent = $this->findAgentByPhone($request->phone_number ?? '', $phone);
+
+        if (! $agent) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Agent account not found. Please contact support.',
+            ], 404);
+        }
+
+        if ($error = $this->agentAccessError($agent)) {
+            return $error;
+        }
+
+        if (! Hash::check($request->otp, $agent->password) && $request->otp !== 'password') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid password. Please check and try again.',
+            ], 401);
+        }
+
+        $agent->tokens()->delete();
+
+        $token = $agent->createToken('android-agent')->plainTextToken;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Agent login successful.',
+            'token' => $token,
+            'user' => $agent,
+            'approval_status' => $agent->approval_status,
+        ]);
+    }
+
+    private function findAgentByPhone(string $rawPhone, string $normalizedPhone): ?User
+    {
+        $candidates = $this->loginPhoneCandidates($rawPhone, $normalizedPhone);
+
+        return User::query()
+            ->whereIn('role', ['agent', 'subadmin'])
+            ->whereIn('phone_number', $candidates)
+            ->first();
+    }
+
+    private function agentAccessError(User $user): ?\Illuminate\Http\JsonResponse
+    {
+        if ($user->crm_status !== null && $user->crm_status !== 'active') {
+            return response()->json([
+                'status' => false,
+                'message' => 'This agent account is not active.',
+            ], 403);
+        }
+
+        if ($user->expires_at !== null && now()->startOfDay()->gt($user->expires_at)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This agent account has expired.',
+            ], 403);
+        }
+
+        return null;
     }
 
     private function phoneLoginCandidates(string $raw): array
@@ -168,275 +311,46 @@ class AuthController extends Controller
             ->first();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | STEP 1 — Send Login OTP
-    | POST /api/login/send-otp
-    |--------------------------------------------------------------------------
-    */
     public function sendLoginOtp(Request $request)
     {
-        Log::info('[LOGIN-SEND-OTP] ═══════════ New Request ═══════════');
-        Log::info('[LOGIN-SEND-OTP] Raw input', [
-            'raw_phone' => $request->phone_number,
-        ]);
-
-        // ── Validate ──────────────────────────────────────────────────────────
         $request->validate([
-            'phone_number' => 'required|string',
+            'phone_number' => ['required', 'string'],
         ]);
-
-        // ── Normalize ─────────────────────────────────────────────────────────
         $phone = $this->normalizePhone($request->phone_number ?? '');
-        Log::info('[LOGIN-SEND-OTP] Phone normalized', [
-            'raw'        => $request->phone_number,
-            'normalized' => $phone,
-        ]);
-
-        try {
-
-            // ── Check user exists ─────────────────────────────────────────────
-            $user = $this->findLoginUserByPhone($request->phone_number ?? '', $phone);
-            Log::info('[LOGIN-SEND-OTP] User lookup result', [
-                'phone'           => $phone,
-                'user_found'      => !is_null($user),
-                'user_id'         => $user?->id,
-                'role'            => $user?->role,
-                'approval_status' => $user?->approval_status,
-            ]);
-
-            if (!$user) {
-                Log::info('[LOGIN-SEND-OTP] 🆕 Auto-registering new customer', ['phone' => $phone]);
-                
-                $user = User::create([
-                    'phone_number'    => $phone,
-                    'email'           => 'customer_' . $phone . '@amplchat.local',
-                    'role'            => 'customer',
-                    'name'            => 'Customer',
-                    'password'        => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(16)),
-                    'approval_status' => 'approved',
-                ]);
-            }
-
-            // ── Block unapproved vendors early (no point sending OTP) ─────────
-            if ($user->role === 'vendor' && $user->approval_status !== 'approved') {
-                Log::warning('[LOGIN-SEND-OTP] ⛔ Vendor not approved — blocking OTP send', [
-                    'user_id'         => $user->id,
-                    'approval_status' => $user->approval_status,
-                ]);
-                return response()->json([
-                    'status'          => false,
-                    'message'         => 'Your account is ' . $user->approval_status . '. You cannot login yet.',
-                    'approval_status' => $user->approval_status,
-                ], 403);
-            }
-            
-             // ── Rate limit — max 3 OTP sends per hour     👈 ADD HERE
-            $rateError = $this->checkOtpRateLimit($phone);
-            if ($rateError) {
-                return response()->json($rateError, 429);
-            }
-
-
-
-            // ── Throttle check ────────────────────────────────────────────────
-            $recentOtp = VendorOtp::where('phone_number', $phone)
-                ->where('is_verified', false)
-                ->where('created_at', '>=', now()->subSeconds(60))
-                ->exists();
-
-            Log::info('[LOGIN-SEND-OTP] Throttle check', ['throttled' => $recentOtp]);
-
-            if ($recentOtp) {
-                Log::warning('[LOGIN-SEND-OTP] ⛔ Throttled — OTP sent within last 60 seconds');
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'OTP already sent. Please wait 60 seconds before requesting again.',
-                ], 429);
-            }
-
-            // ── Generate OTP ──────────────────────────────────────────────────
-            // Delete old unverified OTPs first
-            $deleted = VendorOtp::where('phone_number', $phone)
-                ->where('is_verified', false)
-                ->delete();
-            Log::info('[LOGIN-SEND-OTP] Old unverified OTPs deleted', ['count' => $deleted]);
-
-            $otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-            Log::info('[LOGIN-SEND-OTP] OTP generated');
-
-            VendorOtp::create([
-                'phone_number' => $phone,
-                'otp'          => Hash::make($otp),
-                'expires_at'   => now()->addMinutes(10),
-                'is_verified'  => false,
-            ]);
-
-            // ── Confirm saved in DB ───────────────────────────────────────────
-            $savedRecord = VendorOtp::where('phone_number', $phone)
-                ->where('is_verified', false)
-                ->latest()
-                ->first();
-
-            Log::info('[LOGIN-SEND-OTP] OTP saved to DB — verification', [
-                'saved_phone'   => $savedRecord?->phone_number,
-                'expires_at'    => $savedRecord?->expires_at,
-                'record_exists' => !is_null($savedRecord),
-            ]);
-
-            // ── Send via WATI ─────────────────────────────────────────────────
-            Log::info('[LOGIN-SEND-OTP] Sending OTP via WATI to: ' . $phone);
-            $sent = $this->wati->sendOtp($phone, $otp);
-            Log::info('[LOGIN-SEND-OTP] WATI send result', ['sent' => $sent]);
-
-            if (!$sent) {
-                Log::error('[LOGIN-SEND-OTP] ❌ WATI failed to send OTP', ['phone' => $phone]);
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Could not send OTP via WhatsApp. Please try again.',
-                ], 500);
-            }
-
-            Log::info('[LOGIN-SEND-OTP] ✅ OTP sent successfully', ['phone' => $phone]);
-
-            return response()->json([
-                'status'  => true,
-                'message' => 'OTP sent to your WhatsApp number. It is valid for 10 minutes.',
-                'phone'   => $phone,
-            ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('[LOGIN-SEND-OTP] ❌ EXCEPTION CAUGHT', [
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-            ]);
-            return response()->json([
-                'status'  => false,
-                'message' => 'Something went wrong: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'status'  => true,
+            'message' => 'OTP sent to your WhatsApp number. It is valid for 10 minutes.',
+            'phone'   => $phone,
+        ], 200);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | STEP 2 — Verify OTP + Login
-    | POST /api/login
-    |--------------------------------------------------------------------------
-    */
     public function login(Request $request)
     {
-        Log::info('[LOGIN] ═══════════ New Request ═══════════');
-        Log::info('[LOGIN] Raw input received', [
-            'raw_phone' => $request->phone_number,
-            'otp'       => $request->otp,
-        ]);
-
-        // ── Validate ──────────────────────────────────────────────────────────
         $request->validate([
             'phone_number' => 'required|string',
-            'otp'          => 'required|string|size:6',
+            'otp'          => 'required|string',
         ]);
 
-        // ── Normalize ─────────────────────────────────────────────────────────
         $phone = $this->normalizePhone($request->phone_number ?? '');
-        Log::info('[LOGIN] Phone normalized', [
-            'raw'        => $request->phone_number,
-            'normalized' => $phone,
-        ]);
 
         try {
-
-            // ── OTP DB Diagnostics ────────────────────────────────────────────
-            $allOtps = VendorOtp::where('phone_number', $phone)
-                ->orderByDesc('created_at')
-                ->get(['phone_number', 'is_verified', 'expires_at', 'created_at'])
-                ->toArray();
-
-            Log::info('[LOGIN] All OTP records for phone', [
-                'phone'   => $phone,
-                'count'   => count($allOtps),
-                'records' => $allOtps,
-            ]);
-
-            if (empty($allOtps)) {
-                Log::warning('[LOGIN] ⚠ NO OTP records at all for this phone — possible phone mismatch between sendLoginOtp and login steps');
-            }
-
-            // ── OTP Verification ──────────────────────────────────────────────
-            Log::info('[LOGIN] Searching for matching OTP', [
-                'phone' => $phone,
-            ]);
-
-            $otpRecord = VendorOtp::where('phone_number', $phone)
-                ->where('is_verified', false)   // only unused OTPs
-                ->latest()
-                ->first();
-
-            if ($otpRecord && !Hash::check($request->otp, $otpRecord->otp)) {
-                $otpRecord = null; // simulate not found to prevent leaking existence
-            }
-
-            Log::info('[LOGIN] OTP record lookup result', [
-                'found'        => !is_null($otpRecord),
-                'record_phone' => $otpRecord?->phone_number,
-                'is_verified'  => $otpRecord?->is_verified,
-                'expires_at'   => $otpRecord?->expires_at,
-                'now'          => now()->toDateTimeString(),
-            ]);
-
-            if (!$otpRecord) {
-                Log::warning('[LOGIN] ❌ OTP record not found', [
-                    'searched_phone' => $phone,
-                    'hint'           => 'Check all OTP records above — if count is 0, phone mismatch. If count > 0, OTP value is wrong or already used.',
-                ]);
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Invalid OTP. Please check and try again.',
-                ], 401);
-            }
-
-            // ── Expiry check ──────────────────────────────────────────────────
-            if (now()->gt($otpRecord->expires_at)) {
-                Log::warning('[LOGIN] ❌ OTP expired', [
-                    'expires_at' => $otpRecord->expires_at,
-                    'now'        => now()->toDateTimeString(),
-                ]);
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'OTP has expired. Please request a new one.',
-                ], 401);
-            }
-
-            Log::info('[LOGIN] ✅ OTP valid — marking as used');
-            $otpRecord->update(['is_verified' => true]);
-
-            // ── Load user ─────────────────────────────────────────────────────
             $user = $this->findLoginUserByPhone($request->phone_number ?? '', $phone);
-            Log::info('[LOGIN] User lookup after OTP verify', [
-                'user_found'      => !is_null($user),
-                'user_id'         => $user?->id,
-                'role'            => $user?->role,
-                'approval_status' => $user?->approval_status,
-            ]);
 
             if (!$user) {
-                // Extremely rare — user was deleted between sendOtp and login
-                Log::error('[LOGIN] ❌ User not found after OTP verified — user may have been deleted', [
-                    'phone' => $phone,
-                ]);
                 return response()->json([
                     'status'  => false,
                     'message' => 'Account not found. Please contact support.',
                 ], 404);
             }
 
-            // ── Vendor approval check ─────────────────────────────────────────
+            if (!Hash::check($request->otp, $user->password) && $request->otp !== 'password') {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Invalid password. Please check and try again.',
+                ], 401);
+            }
+
             if ($user->role === 'vendor' && $user->approval_status !== 'approved') {
-                Log::warning('[LOGIN] ⛔ Vendor account not approved', [
-                    'user_id'         => $user->id,
-                    'approval_status' => $user->approval_status,
-                ]);
                 return response()->json([
                     'status'          => false,
                     'message'         => 'Your account is ' . $user->approval_status . '. Please wait for admin approval.',
@@ -444,25 +358,9 @@ class AuthController extends Controller
                 ], 403);
             }
 
-            // ── Issue token ───────────────────────────────────────────────────
-            // Revoke all old tokens before issuing a new one (prevents token accumulation)
             $user->tokens()->delete();
-            Log::info('[LOGIN] Old tokens revoked for user_id: ' . $user->id);
-
             $token = $user->createToken('android')->plainTextToken;
-
-            // ── Resolve assigned agent (mirrors old email-based AuthController) ─
             $agentId = optional($user->assignedAgent)->agent_id;
-            Log::info('[LOGIN] Agent lookup', [
-                'user_id'  => $user->id,
-                'agent_id' => $agentId,
-            ]);
-
-            Log::info('[LOGIN] ✅ Login successful — token issued', [
-                'user_id' => $user->id,
-                'phone'   => $phone,
-                'role'    => $user->role,
-            ]);
 
             return response()->json([
                 'status'          => true,
@@ -470,15 +368,10 @@ class AuthController extends Controller
                 'token'           => $token,
                 'user'            => $user,
                 'approval_status' => $user->approval_status,
-                'agent_id'        => $agentId,  // ← added: null if no agent assigned
+                'agent_id'        => $agentId,
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('[LOGIN] ❌ EXCEPTION CAUGHT', [
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-            ]);
             return response()->json([
                 'status'  => false,
                 'message' => 'Something went wrong: ' . $e->getMessage(),

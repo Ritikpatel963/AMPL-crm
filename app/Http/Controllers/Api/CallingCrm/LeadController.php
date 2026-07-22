@@ -85,6 +85,14 @@ class LeadController extends Controller
             }
         }
 
+        if ($request->filled('state') && $request->filled('city')) {
+            $location = \App\Models\Location::firstOrCreate(
+                ['name' => $request->input('city'), 'state' => $request->input('state')],
+                ['is_active' => true]
+            );
+            $request->merge(['location_id' => $location->id]);
+        }
+
         $data = $this->validateLead($request);
         $properties = $data['properties'] ?? [];
         unset($data['properties']);
@@ -582,6 +590,7 @@ class LeadController extends Controller
             'tag_id' => ['nullable', 'exists:stage_tags,id'],
             'source_id' => ['nullable', 'exists:lead_sources,id'],
             'contact_list_id' => ['nullable', 'exists:contact_lists,id'],
+            'location_id' => ['nullable', 'exists:locations,id'],
             'name' => ['nullable', 'string', 'max:180'],
             'phone' => [$required, 'string', 'max:20', Rule::unique('leads', 'phone')->ignore($lead?->id)],
             'email' => ['nullable', 'email', 'max:180'],

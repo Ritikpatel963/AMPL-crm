@@ -32,6 +32,14 @@
             <option value="agent">Agent</option>
             <option value="subadmin">Subadmin</option>
           </select>
+
+          <label>Location</label>
+          <select name="location_id" class="form-select mb-3" id="edit_location">
+            <option value="">Select Location (Optional)</option>
+            @foreach($locations as $loc)
+              <option value="{{ $loc->id }}">{{ $loc->name }}</option>
+            @endforeach
+          </select>
         </div>
 
         <div class="modal-footer">
@@ -69,6 +77,7 @@
         <th>Name</th>
         <th>Email</th>
         <th>Phone</th>
+        <th>Location</th>
         <th>Role</th>
         <th>Status</th>
         <th>Actions</th>
@@ -81,6 +90,7 @@
           <td>{{ $user->name }}</td>
           <td>{{ $user->email }}</td>
           <td>{{ $user->phone_number }}</td>
+          <td>{{ $user->location ? $user->location->name : 'N/A' }}</td>
           <td>{{ ucfirst($user->role) }}</td>
           <td>
             <span class="badge {{ ($user->crm_status ?? 'active') === 'active' ? 'bg-success' : 'bg-danger' }}">
@@ -94,6 +104,7 @@
               data-email="{{ $user->email }}"
               data-phone-number="{{ $user->phone_number }}"
               data-role="{{ $user->role }}"
+              data-location-id="{{ $user->location_id }}"
               data-bs-toggle="modal"
               data-bs-target="#editUserModal"
               onclick="editUser(this)">
@@ -136,6 +147,13 @@
             <option value="subadmin">Subadmin</option>
           </select>
 
+          <select name="location_id" class="form-select mb-3">
+            <option value="">Select Location (Optional)</option>
+            @foreach($locations as $loc)
+              <option value="{{ $loc->id }}">{{ $loc->name }}</option>
+            @endforeach
+          </select>
+
           <div class="text-end">
             <button type="submit" class="btn btn-primary">Create User</button>
           </div>
@@ -166,6 +184,7 @@ function editUser(button) {
   document.getElementById('edit_email').value = button.getAttribute('data-email');
   document.getElementById('edit_phone_number').value = button.getAttribute('data-phone-number');
   document.getElementById('edit_role').value = button.getAttribute('data-role');
+  document.getElementById('edit_location').value = button.getAttribute('data-location-id') || '';
 }
 </script>
 @endsection

@@ -19,12 +19,9 @@ use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\AdminVendorCategoryController;
 use App\Http\Controllers\AdminCustomerController;
 
-//order route witout user login only for testing 
-Route::get('/front', [ProductController::class, 'index'])->name('shop.index');
-Route::get('/product/{id}', [ProductController::class, 'show'])->name('shop.show');
-Route::post('/order', [OrderController::class, 'store'])->name('shop.order');
-Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-// Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+// Admin orders view
+Route::get('/orders', [App\Http\Controllers\Frontend\OrderController::class, 'index'])->name('orders.index');
+
 
 // chatsystem routes
 // 🟩 User Dashboard
@@ -71,6 +68,8 @@ Route::middleware('guest:admin')->group(function () {
     Route::get('/admin', [AdminAuthController::class, 'showLoginForm'])->name('admin_panel.admin.login');
     Route::post('/admin/send-otp', [AdminAuthController::class, 'sendOtp'])->name('admin_panel.admin.send.otp');
     Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin_panel.admin.login.submit');
+    Route::get('/admin/auth/google', [AdminAuthController::class, 'redirectToGoogle'])->name('admin_panel.admin.google.redirect');
+    Route::get('/admin/auth/google/callback', [AdminAuthController::class, 'handleGoogleCallback'])->name('admin_panel.admin.google.callback');
 });
 
 // Admin protected routes (still under /admin prefix)
@@ -83,6 +82,8 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
     Route::delete('/admins/{admin}', [AdminAuthController::class, 'destroyAdmin'])->name('admins.destroy');
     Route::get('/index', [AdminAuthController::class, 'dashboard'])->name('index');
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
+    Route::get('/settings', [AdminAuthController::class, 'settings'])->name('settings.index');
+    Route::post('/settings', [AdminAuthController::class, 'updateSettings'])->name('settings.update');
     //categories
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::post('/categories/store', [CategoryController::class, 'store'])->name('categories.store');
@@ -139,9 +140,24 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
     Route::get('/calling-crm/report/user', function () {
         return view('admin_panel.callingcrm.user-report');
     })->name('callingcrm.report.user');
+    Route::get('/calling-crm/report/user-activity', function () {
+        return view('admin_panel.callingcrm.user-activity-report');
+    })->name('callingcrm.report.user_activity');
+    Route::get('/calling-crm/report/lead-disposition', function () {
+        return view('admin_panel.callingcrm.lead-disposition-report');
+    })->name('callingcrm.report.lead_disposition');
+    Route::get('/calling-crm/report/user-stage', function () {
+        return view('admin_panel.callingcrm.user-stage-report');
+    })->name('callingcrm.report.user_stage');
     Route::get('/calling-crm/report/login', function () {
         return view('admin_panel.callingcrm.login-report');
     })->name('callingcrm.report.login');
+    Route::get('/calling-crm/report/follow-ups', function () {
+        return view('admin_panel.callingcrm.follow-up-report');
+    })->name('callingcrm.report.follow_ups');
+    Route::get('/calling-crm/report/campaign', function () {
+        return view('admin_panel.callingcrm.campaign-report');
+    })->name('callingcrm.report.campaign');
     Route::get('/calling-crm/trends', function () {
         return view('admin_panel.callingcrm.trends');
     })->name('callingcrm.trends');
@@ -250,8 +266,11 @@ Route::prefix('admin_panel/admin')->name('admin_panel.admin.')->middleware(['aut
         Route::get('/dashboard/agent-activity', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'agentActivity']);
         Route::get('/dashboard/leads-by-stage', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'leadsByStage']);
         Route::get('/reports/catalog', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'catalog']);
+        Route::get('/reports/user-call/export', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'exportUserCallReport']);
         Route::get('/reports/user-call', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'userCallReport']);
+        Route::get('/reports/user-activity', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'userActivityReport']);
         Route::get('/reports/lead-disposition', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'leadDispositionReport']);
+        Route::get('/reports/user-stage', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'userStageReport']);
         Route::get('/reports/follow-ups', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'followUpReport']);
         Route::get('/reports/campaign', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'campaignReport']);
         Route::get('/reports/login', [\App\Http\Controllers\Api\CallingCrm\ReportController::class, 'loginReport']);

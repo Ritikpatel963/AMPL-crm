@@ -267,12 +267,22 @@
           <button type="button" class="crm-modal-close" data-lead-close aria-label="Close">&times;</button>
         </div>
         <form class="lead-form" data-add-lead-form>
-          <input class="lead-input" type="text" placeholder="Contact Name" autocomplete="name">
-          <input class="lead-input" type="tel" placeholder="Contact Number *" autocomplete="tel" required>
-          <input class="lead-input" type="email" placeholder="Email" autocomplete="email">
+          <input class="lead-input" type="text" name="name" placeholder="Contact Name" autocomplete="name">
+          <input class="lead-input" type="tel" name="phone" placeholder="Contact Number *" autocomplete="tel" required>
+          <input class="lead-input" type="email" name="email" placeholder="Email" autocomplete="email">
           <div class="lead-select">
             <select class="lead-input" data-crm-campaign-select required>
               <option value="">Campaign *</option>
+            </select>
+          </div>
+          <div class="lead-select">
+            <select class="lead-input" name="state" data-state-select>
+              <option value="">State</option>
+            </select>
+          </div>
+          <div class="lead-select">
+            <select class="lead-input" name="city" data-city-select disabled>
+              <option value="">City</option>
             </select>
           </div>
           <div class="lead-modal-actions">
