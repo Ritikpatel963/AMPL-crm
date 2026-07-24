@@ -33,18 +33,26 @@ class AuthController extends Controller
         $payload = $response->json();
         $email = $payload['email'] ?? null;
 
+        // Verify the token was issued for our app
+        $expectedClientId = config('services.google.client_id', env('GOOGLE_CLIENT_ID'));
+        $tokenAud = $payload['aud'] ?? '';
+        if ($expectedClientId && $tokenAud !== $expectedClientId) {
+            \Illuminate\Support\Facades\Log::warning('Google token audience mismatch', [
+                'expected' => $expectedClientId,
+                'got' => $tokenAud,
+            ]);
+            return response()->json(['status' => false, 'message' => 'Token audience mismatch.'], 401);
+        }
+
         if (!$email) {
             return response()->json(['status' => false, 'message' => 'Google account missing email.'], 400);
         }
 
-        $user = User::firstOrCreate(
-            ['email' => $email],
-            [
-                'name' => $payload['name'] ?? 'Google User',
-                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
-                'role' => 'customer',
-            ]
-        );
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            return response()->json(['status' => false, 'message' => 'You are not registered. Please contact the administrator.'], 404);
+        }
 
         $token = $user->createToken('android-app')->plainTextToken;
 
